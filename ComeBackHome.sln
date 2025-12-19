@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36804.6 d17.14
+VisualStudioVersion = 17.14.36804.6
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ComeBackHome", "ComeBackHome.csproj", "{9E240A60-01E9-4286-ADB5-FD3BF7642792}"
 EndProject

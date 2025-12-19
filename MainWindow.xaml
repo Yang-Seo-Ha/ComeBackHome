@@ -104,10 +104,9 @@
         </Style>
     </Window.Resources>
 
-    <!-- ✅ 하단 잘림 방지: 본문+하단을 ScrollViewer로 감싸기 -->
     <DockPanel LastChildFill="True">
 
-        <!-- 상단 헤더 고정 -->
+        <!-- Header -->
         <Border DockPanel.Dock="Top" Background="#0A1330" BorderBrush="#22345E" BorderThickness="0,0,0,1" Height="72">
             <Grid Margin="18,10">
                 <Grid.ColumnDefinitions>
@@ -127,12 +126,12 @@
                             <TextBlock Text="LIVE" FontWeight="SemiBold"/>
                         </StackPanel>
                     </Border>
-                    <TextBlock Text="2025-12-18 19:39" Foreground="#9DB7FF" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TxtHeaderTime" Text="-" Foreground="#9DB7FF" VerticalAlignment="Center"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- 스크롤 영역 -->
+        <!-- Body -->
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <Grid>
                 <Grid.RowDefinitions>
@@ -140,7 +139,7 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- ===== 본문 3열 ===== -->
+                <!-- 3 Columns -->
                 <Grid Grid.Row="0">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="330"/>
@@ -148,14 +147,14 @@
                         <ColumnDefinition Width="380"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- 좌측 -->
+                    <!-- Left -->
                     <GroupBox Grid.Column="0" Header="실시간 안전 현황 확인하기">
                         <StackPanel>
 
-                            <!-- ✅ NEW: 현장 인원 현황 카드 -->
                             <Border CornerRadius="12" Background="#0C1530" BorderBrush="#243A66" BorderThickness="1" Padding="12" Margin="0,0,0,10">
                                 <StackPanel>
                                     <TextBlock Text="현장 인원 현황" Foreground="#9DB7FF"/>
+
                                     <Grid Margin="0,8,0,0">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>
@@ -187,7 +186,6 @@
                                 </StackPanel>
                             </Border>
 
-                            <!-- 작업 버튼(✅ 인원 뱃지 표시) -->
                             <Button>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -230,12 +228,11 @@
                             <Border Margin="0,10,0,0" CornerRadius="12" Background="#0C1530" BorderBrush="#243A66" BorderThickness="1" Padding="12">
                                 <StackPanel>
                                     <TextBlock Text="현재 선택:" Foreground="#9DB7FF"/>
-                                    <TextBlock Text="고소작업대 작업 (A구역)" FontSize="16" FontWeight="Bold" Margin="0,4,0,0"/>
-                                    <TextBlock Text="마지막 감지: 19:37:12" Foreground="#9DB7FF" Margin="0,6,0,0"/>
+                                    <TextBlock Text="(데모)" FontSize="16" FontWeight="Bold" Margin="0,4,0,0"/>
+                                    <TextBlock Text="마지막 감지: -" Foreground="#9DB7FF" Margin="0,6,0,0"/>
                                 </StackPanel>
                             </Border>
 
-                            <!-- ✅ NEW: 전체 경고 요약 -->
                             <Border Margin="0,10,0,0" CornerRadius="12" Background="#081028" BorderBrush="#243A66" BorderThickness="1" Padding="12">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -251,10 +248,11 @@
                                     </Border>
                                 </Grid>
                             </Border>
+
                         </StackPanel>
                     </GroupBox>
 
-                    <!-- 중앙 -->
+                    <!-- Center -->
                     <GroupBox Grid.Column="1" Header="CCTV 모니터링">
                         <Grid>
                             <Grid.RowDefinitions>
@@ -264,37 +262,20 @@
 
                             <Border CornerRadius="16" Background="#050A14" BorderBrush="#22345E" BorderThickness="1">
                                 <Grid>
-                                    <Border Margin="12" CornerRadius="12" Background="#0A1226"/>
+                                    <Image x:Name="ImgCctv"
+                                           Stretch="Uniform"
+                                           RenderOptions.BitmapScalingMode="HighQuality"/>
 
-                                    <Canvas IsHitTestVisible="False">
-                                        <Border BorderBrush="#FF3B3B" BorderThickness="3" CornerRadius="6"
-                                                Width="220" Height="160"
-                                                Canvas.Left="120" Canvas.Top="120">
-                                            <TextBlock Text="NO HELMET"
-                                                       Background="#AA000000"
-                                                       Foreground="#FFECEC"
-                                                       FontWeight="Bold"
-                                                       Padding="8,4"
-                                                       Margin="6"/>
-                                        </Border>
+                                    <Canvas x:Name="OverlayCanvas"
+                                            IsHitTestVisible="False"/>
 
-                                        <Border BorderBrush="#FF3B3B" BorderThickness="3" CornerRadius="6"
-                                                Width="240" Height="190"
-                                                Canvas.Left="430" Canvas.Top="170">
-                                            <TextBlock Text="NO HARNESS"
-                                                       Background="#AA000000"
-                                                       Foreground="#FFECEC"
-                                                       FontWeight="Bold"
-                                                       Padding="8,4"
-                                                       Margin="6"/>
-                                        </Border>
-                                    </Canvas>
-
-                                    <TextBlock Text="(여기에 CCTV 영상 프레임을 띄울 예정)"
-                                               Foreground="#6F86C8"
-                                               FontSize="14"
-                                               HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"/>
+                                    <Border Background="#66000000" CornerRadius="10"
+                                            HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                            Margin="12" Padding="10">
+                                        <TextBlock x:Name="TxtCctvStatus"
+                                                   Text="Ready"
+                                                   Foreground="#9DB7FF"/>
+                                    </Border>
                                 </Grid>
                             </Border>
 
@@ -306,26 +287,22 @@
 
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <TextBlock Text="채널:" Foreground="#9DB7FF" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                    <ComboBox Width="220" SelectedIndex="0">
-                                        <ComboBoxItem Content="CH-01 (A구역 · 고소작업대)"/>
-                                        <ComboBoxItem Content="CH-02 (B구역 · 사다리)"/>
-                                        <ComboBoxItem Content="CH-03 (C구역 · 비계)"/>
-                                    </ComboBox>
+                                    <ComboBox x:Name="CmbChannel" Width="380"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                                    <Button Content="⏯ 재생/정지" Margin="0,0,10,0"/>
-                                    <Button Content="📌 스냅샷 저장" Margin="0,0,10,0"/>
-                                    <!-- ✅ NEW: 경고 확인(Ack) 버튼 -->
-                                    <Button Content="✅ 경고 확인(Ack)"/>
+                                    <Button x:Name="BtnPlayStop" Content="⏯ 재생/정지" Margin="0,0,10,0" Click="BtnPlayStop_Click"/>
+                                    <Button x:Name="BtnSnapshot" Content="📌 스냅샷 저장" Margin="0,0,10,0" Click="BtnSnapshot_Click"/>
+                                    <Button x:Name="BtnAck" Content="✅ 경고 확인(Ack)" Click="BtnAck_Click"/>
                                 </StackPanel>
                             </Grid>
                         </Grid>
                     </GroupBox>
 
-                    <!-- 우측 -->
+                    <!-- Right -->
                     <GroupBox Grid.Column="2" Header="안전수칙 자동 점검">
                         <StackPanel>
+
                             <Border Style="{StaticResource CheckRowStyle}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -372,7 +349,6 @@
                                 </StackPanel>
                             </Border>
 
-                            <!-- ✅ NEW: 추천 기능 - “리포트 내보내기” -->
                             <Border Style="{StaticResource CheckRowStyle}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -380,14 +356,16 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="월간 리포트" FontSize="14" FontWeight="Bold"/>
-                                    <Button Grid.Column="1" Content="📄 내보내기" Margin="0" Padding="10,6"/>
+                                    <Button Grid.Column="1" Content="📄 내보내기" Margin="0" Padding="10,6" IsEnabled="False"/>
                                 </Grid>
                             </Border>
+
                         </StackPanel>
                     </GroupBox>
+
                 </Grid>
 
-                <!-- ===== 하단: 월간 통계 (Auto라서 안 잘림) ===== -->
+                <!-- Bottom -->
                 <Grid Grid.Row="1" Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
