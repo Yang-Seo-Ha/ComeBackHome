@@ -364,3 +364,9 @@ FodyWeavers.xsd
 
 #개인파일경로설정
 configs/local.user.json
+
+#모델은 로컬에만
+assets/models/
+pred/
+*.pt
+*.onnx
