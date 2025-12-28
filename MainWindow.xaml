@@ -1,5 +1,4 @@
-﻿<!-- MainWindow.xaml  (✅ 그대로 붙여넣기 OK) -->
-<Window x:Class="ComeBackHome.MainWindow"
+﻿<Window x:Class="ComeBackHome.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="ComeBackHome - Command Center"
@@ -9,6 +8,7 @@
         Background="#0B1020">
 
     <Window.Resources>
+
         <Style TargetType="TextBlock">
             <Setter Property="Foreground" Value="#D6E4FF"/>
         </Style>
@@ -19,7 +19,7 @@
             <Setter Property="BorderBrush" Value="#2B3E6B"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="12,10"/>
-            <Setter Property="Margin" Value="0,0,0,10"/>
+            <Setter Property="Margin" Value="0,0,10,10"/>
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -56,7 +56,9 @@
                                     <RowDefinition Height="*"/>
                                 </Grid.RowDefinitions>
 
-                                <Border Background="#13224A" CornerRadius="14,14,0,0" Padding="12,10">
+                                <Border Background="#13224A"
+                                        CornerRadius="14,14,0,0"
+                                        Padding="12,10">
                                     <TextBlock Text="{TemplateBinding Header}"
                                                FontSize="14"
                                                FontWeight="SemiBold"/>
@@ -103,12 +105,17 @@
             <Setter Property="Padding" Value="10"/>
             <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
+
     </Window.Resources>
 
     <DockPanel LastChildFill="True">
 
         <!-- Header -->
-        <Border DockPanel.Dock="Top" Background="#0A1330" BorderBrush="#22345E" BorderThickness="0,0,0,1" Height="72">
+        <Border DockPanel.Dock="Top"
+                Background="#0A1330"
+                BorderBrush="#22345E"
+                BorderThickness="0,0,0,1"
+                Height="72">
             <Grid Margin="18,10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -116,24 +123,40 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="ComeBackHome" FontSize="22" FontWeight="Bold" Margin="0,0,12,0"/>
-                    <TextBlock Text="| 관리자 관제 센터" FontSize="14" Foreground="#9DB7FF" VerticalAlignment="Bottom"/>
+                    <TextBlock Text="ComeBackHome"
+                               FontSize="22"
+                               FontWeight="Bold"
+                               Margin="0,0,12,0"/>
+                    <TextBlock Text="| 관리자 관제 센터"
+                               FontSize="14"
+                               Foreground="#9DB7FF"
+                               VerticalAlignment="Bottom"/>
                 </StackPanel>
 
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Right">
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Right">
                     <Border Style="{StaticResource BadgeStyle}" Margin="0,0,10,0">
                         <StackPanel Orientation="Horizontal">
-                            <Ellipse Width="8" Height="8" Fill="#2EE59D" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <Ellipse Width="8" Height="8"
+                                     Fill="#2EE59D"
+                                     VerticalAlignment="Center"
+                                     Margin="0,0,8,0"/>
                             <TextBlock Text="LIVE" FontWeight="SemiBold"/>
                         </StackPanel>
                     </Border>
-                    <TextBlock x:Name="TxtHeaderTime" Text="-" Foreground="#9DB7FF" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TxtHeaderTime"
+                               Text="-"
+                               Foreground="#9DB7FF"
+                               VerticalAlignment="Center"/>
                 </StackPanel>
             </Grid>
         </Border>
 
         <!-- Body -->
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
@@ -152,7 +175,13 @@
                     <GroupBox Grid.Column="0" Header="실시간 안전 현황 확인하기">
                         <StackPanel>
 
-                            <Border CornerRadius="12" Background="#0C1530" BorderBrush="#243A66" BorderThickness="1" Padding="12" Margin="0,0,0,10">
+                            <!-- 인원 현황 -->
+                            <Border CornerRadius="12"
+                                    Background="#0C1530"
+                                    BorderBrush="#243A66"
+                                    BorderThickness="1"
+                                    Padding="12"
+                                    Margin="0,0,0,10">
                                 <StackPanel>
                                     <TextBlock Text="현장 인원 현황" Foreground="#9DB7FF"/>
 
@@ -161,12 +190,25 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
+
                                         <StackPanel>
-                                            <TextBlock Text="A구역 · 고소작업대" FontSize="14" FontWeight="SemiBold"/>
-                                            <TextBlock Text="적정 2명 / 현재 1명" Foreground="#9DB7FF" Margin="0,4,0,0"/>
+                                            <TextBlock Text="A구역 · 고소작업대"
+                                                       FontSize="14"
+                                                       FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="TxtPeopleLineA"
+                                                       Text="적정 2명 / 현재 -명"
+                                                       Foreground="#9DB7FF"
+                                                       Margin="0,4,0,0"/>
                                         </StackPanel>
-                                        <Border Grid.Column="1" Style="{StaticResource PillWarn}" VerticalAlignment="Center">
-                                            <TextBlock Text="인원부족" Foreground="#FFECEC" FontWeight="Bold"/>
+
+                                        <Border Grid.Column="1"
+                                                x:Name="BadgePeopleA"
+                                                Style="{StaticResource PillWarn}"
+                                                VerticalAlignment="Center">
+                                            <TextBlock x:Name="TxtPeopleBadgeA"
+                                                       Text="인원확인"
+                                                       Foreground="#FFECEC"
+                                                       FontWeight="Bold"/>
                                         </Border>
                                     </Grid>
 
@@ -175,66 +217,93 @@
                                             <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
+
                                         <StackPanel>
-                                            <TextBlock Text="B구역 · 사다리" FontSize="14" FontWeight="SemiBold"/>
-                                            <TextBlock Text="적정 2명 / 현재 2명" Foreground="#9DB7FF" Margin="0,4,0,0"/>
+                                            <TextBlock Text="B구역 · 사다리"
+                                                       FontSize="14"
+                                                       FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="TxtPeopleLineB"
+                                                       Text="적정 2명 / 현재 -명"
+                                                       Foreground="#9DB7FF"
+                                                       Margin="0,4,0,0"/>
                                         </StackPanel>
-                                        <Border Grid.Column="1" Style="{StaticResource BadgeStyle}" VerticalAlignment="Center"
-                                                Background="#163A2A" BorderBrush="#2EE59D">
-                                            <TextBlock Text="정상" FontWeight="Bold"/>
+
+                                        <Border Grid.Column="1"
+                                                x:Name="BadgePeopleB"
+                                                Style="{StaticResource BadgeStyle}"
+                                                VerticalAlignment="Center"
+                                                Background="#163A2A"
+                                                BorderBrush="#2EE59D">
+                                            <TextBlock x:Name="TxtPeopleBadgeB"
+                                                       Text="정상"
+                                                       FontWeight="Bold"/>
                                         </Border>
                                     </Grid>
                                 </StackPanel>
                             </Border>
 
-                            <Button>
+                            <!-- 작업 유형 버튼 -->
+                            <Button x:Name="BtnWorkLadder">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="🪜  사다리 작업   · 위험도: MED" VerticalAlignment="Center"/>
-                                    <Border Grid.Column="1" Style="{StaticResource BadgeStyle}" Background="#0F2C2A" BorderBrush="#2EE59D">
-                                        <TextBlock Text="2/2" FontWeight="Bold"/>
+                                    <TextBlock Text="🪜 사다리 작업 · 위험도: MED" VerticalAlignment="Center"/>
+                                    <Border Grid.Column="1"
+                                            Style="{StaticResource BadgeStyle}"
+                                            Background="#0F2C2A"
+                                            BorderBrush="#2EE59D">
+                                        <TextBlock x:Name="TxtWorkLadderCount"
+                                                   Text="-/-"
+                                                   FontWeight="Bold"/>
                                     </Border>
                                 </Grid>
                             </Button>
 
-                            <Button>
+                            <Button x:Name="BtnWorkLift">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="🛗  고소작업대 작업 · 위험도: HIGH" VerticalAlignment="Center"/>
-                                    <Border Grid.Column="1" Style="{StaticResource PillWarn}">
-                                        <TextBlock Text="1/2" Foreground="#FFECEC" FontWeight="Bold"/>
+                                    <TextBlock Text="🛗 고소작업대 작업 · 위험도: HIGH" VerticalAlignment="Center"/>
+                                    <Border Grid.Column="1"
+                                            Style="{StaticResource PillWarn}">
+                                        <TextBlock x:Name="TxtWorkLiftCount"
+                                                   Text="-/-"
+                                                   Foreground="#FFECEC"
+                                                   FontWeight="Bold"/>
                                     </Border>
                                 </Grid>
                             </Button>
 
-                            <Button>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="🧱  비계 작업       · 위험도: MED" VerticalAlignment="Center"/>
-                                    <Border Grid.Column="1" Style="{StaticResource BadgeStyle}" Background="#0F2C2A" BorderBrush="#2EE59D">
-                                        <TextBlock Text="2/2" FontWeight="Bold"/>
-                                    </Border>
-                                </Grid>
-                            </Button>
-
-                            <Border Margin="0,10,0,0" CornerRadius="12" Background="#0C1530" BorderBrush="#243A66" BorderThickness="1" Padding="12">
+                            <Border Margin="0,10,0,0"
+                                    CornerRadius="12"
+                                    Background="#0C1530"
+                                    BorderBrush="#243A66"
+                                    BorderThickness="1"
+                                    Padding="12">
                                 <StackPanel>
                                     <TextBlock Text="현재 선택:" Foreground="#9DB7FF"/>
-                                    <TextBlock Text="(데모)" FontSize="16" FontWeight="Bold" Margin="0,4,0,0"/>
-                                    <TextBlock Text="마지막 감지: -" Foreground="#9DB7FF" Margin="0,6,0,0"/>
+                                    <TextBlock x:Name="TxtSelectedChannel"
+                                               Text="-"
+                                               FontSize="16"
+                                               FontWeight="Bold"
+                                               Margin="0,4,0,0"/>
+                                    <TextBlock x:Name="TxtLastDetectTime"
+                                               Text="마지막 감지: -"
+                                               Foreground="#9DB7FF"
+                                               Margin="0,6,0,0"/>
                                 </StackPanel>
                             </Border>
 
-                            <Border Margin="0,10,0,0" CornerRadius="12" Background="#081028" BorderBrush="#243A66" BorderThickness="1" Padding="12">
+                            <Border Margin="0,10,0,0"
+                                    CornerRadius="12"
+                                    Background="#081028"
+                                    BorderBrush="#243A66"
+                                    BorderThickness="1"
+                                    Padding="12">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -242,10 +311,19 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
                                         <TextBlock Text="오늘 누적 경고" Foreground="#9DB7FF"/>
-                                        <TextBlock Text="7건" FontSize="20" FontWeight="Bold" Margin="0,4,0,0"/>
+                                        <TextBlock x:Name="TxtWarnToday"
+                                                   Text="0건"
+                                                   FontSize="20"
+                                                   FontWeight="Bold"
+                                                   Margin="0,4,0,0"/>
                                     </StackPanel>
-                                    <Border Grid.Column="1" Style="{StaticResource PillWarn}" VerticalAlignment="Center">
-                                        <TextBlock Text="HIGH" Foreground="#FFECEC" FontWeight="Bold"/>
+                                    <Border Grid.Column="1"
+                                            x:Name="BadgeWarnLevel"
+                                            Style="{StaticResource BadgeStyle}"
+                                            VerticalAlignment="Center">
+                                        <TextBlock x:Name="TxtWarnLevel"
+                                                   Text="LIVE"
+                                                   FontWeight="Bold"/>
                                     </Border>
                                 </Grid>
                             </Border>
@@ -261,19 +339,25 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
 
-                            <Border CornerRadius="16" Background="#050A14" BorderBrush="#22345E" BorderThickness="1">
+                            <Border CornerRadius="16"
+                                    Background="#050A14"
+                                    BorderBrush="#22345E"
+                                    BorderThickness="1">
                                 <Grid>
                                     <Image x:Name="ImgCctv"
                                            Stretch="Uniform"
                                            RenderOptions.BitmapScalingMode="HighQuality"/>
 
-                                    <!-- ✅ Image 위에 그대로 겹침 -->
+                                    <!-- overlay -->
                                     <Canvas x:Name="OverlayCanvas"
                                             IsHitTestVisible="False"/>
 
-                                    <Border Background="#66000000" CornerRadius="10"
-                                            HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                                            Margin="12" Padding="10">
+                                    <Border Background="#66000000"
+                                            CornerRadius="10"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Bottom"
+                                            Margin="12"
+                                            Padding="10">
                                         <TextBlock x:Name="TxtCctvStatus"
                                                    Text="Ready"
                                                    Foreground="#9DB7FF"/>
@@ -281,23 +365,59 @@
                                 </Grid>
                             </Border>
 
+                            <!-- ✅ 하단 컨트롤: 2줄로 분리해서 트래커 콤보가 절대 안 사라짐 -->
                             <Grid Grid.Row="1" Margin="0,12,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="채널:" Foreground="#9DB7FF" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                    <ComboBox x:Name="CmbChannel" Width="380"/>
-                                </StackPanel>
+                                <!-- Row 0: 채널 / 트래커 -->
+                                <Border Grid.Row="0"
+                                        CornerRadius="12"
+                                        Background="#081028"
+                                        BorderBrush="#22345E"
+                                        BorderThickness="1"
+                                        Padding="10"
+                                        Margin="0,0,0,8">
+                                    <WrapPanel VerticalAlignment="Center">
+                                        <TextBlock Text="채널:"
+                                                   Foreground="#9DB7FF"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,10,0"/>
 
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                                    <Button Content="🤖 추론 실행" Margin="0,0,10,0" Click="BtnInfer_Click"/>
-                                    <Button x:Name="BtnPlayStop" Content="⏯ 재생/정지" Margin="0,0,10,0" Click="BtnPlayStop_Click"/>
-                                    <Button x:Name="BtnSnapshot" Content="📌 스냅샷 저장" Margin="0,0,10,0" Click="BtnSnapshot_Click"/>
-                                    <Button x:Name="BtnAck" Content="✅ 경고 확인(Ack)" Click="BtnAck_Click"/>
-                                </StackPanel>
+                                        <ComboBox x:Name="CmbChannel" Width="380" Margin="0,0,18,0"/>
+
+                                        <TextBlock Text="트래커:"
+                                                   Foreground="#9DB7FF"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,10,0"/>
+
+                                        <ComboBox x:Name="CmbTrackerType"
+                                                  Width="180"
+                                                  SelectionChanged="CmbTrackerType_SelectionChanged">
+                                            <ComboBoxItem Content="CSRT"/>
+                                            <ComboBoxItem Content="KCF"/>
+                                            <ComboBoxItem Content="MIL"/>
+                                        </ComboBox>
+
+                                        <CheckBox x:Name="ChkTracking"
+                                                  Content="Tracking ON"
+                                                  IsChecked="True"
+                                                  Margin="18,0,0,0"
+                                                  VerticalAlignment="Center"
+                                                  Foreground="#9DB7FF"/>
+                                    </WrapPanel>
+                                </Border>
+
+                                <!-- Row 1: 버튼들 -->
+                                <WrapPanel Grid.Row="1" HorizontalAlignment="Right">
+                                    <Button Content="🤖 추론 실행" Click="BtnInfer_Click"/>
+                                    <Button x:Name="BtnPlayStop" Content="⏯ 재생/정지" Click="BtnPlayStop_Click"/>
+                                    <Button x:Name="BtnSnapshot" Content="📌 스냅샷 저장" Click="BtnSnapshot_Click"/>
+                                    <Button x:Name="BtnBench" Content="🧪 벤치(300f) → CSV" Click="BtnBench_Click"/>
+                                    <Button x:Name="BtnAck" Content="✅ 경고 확인(Ack)" Click="BtnAck_Click" Margin="0,0,0,10"/>
+                                </WrapPanel>
                             </Grid>
                         </Grid>
                     </GroupBox>
@@ -307,13 +427,95 @@
                         <StackPanel>
 
                             <Border Style="{StaticResource CheckRowStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="탐지 요약"
+                                               FontSize="14"
+                                               FontWeight="Bold"
+                                               Margin="0,0,0,8"/>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Text="UC:" Foreground="#9DB7FF"/>
+                                        <TextBlock x:Name="TxtUcCount"
+                                                   Grid.Column="1"
+                                                   Text="0"
+                                                   FontWeight="Bold"/>
+
+                                        <TextBlock Grid.Column="2"
+                                                   Text="PERSON:"
+                                                   Foreground="#9DB7FF"
+                                                   Margin="12,0,0,0"/>
+                                        <TextBlock x:Name="TxtPersonCount"
+                                                   Grid.Column="3"
+                                                   Text="0"
+                                                   FontWeight="Bold"/>
+                                    </Grid>
+
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Text="PPE:" Foreground="#9DB7FF"/>
+                                        <TextBlock x:Name="TxtPpeCount"
+                                                   Grid.Column="1"
+                                                   Text="0"
+                                                   FontWeight="Bold"/>
+
+                                        <TextBlock Grid.Column="2"
+                                                   Text="HIGH:"
+                                                   Foreground="#9DB7FF"
+                                                   Margin="12,0,0,0"/>
+                                        <TextBlock x:Name="TxtHighCount"
+                                                   Grid.Column="3"
+                                                   Text="0"
+                                                   FontWeight="Bold"/>
+                                    </Grid>
+
+                                    <Grid Margin="0,10,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Text="현재 인원:" Foreground="#9DB7FF"/>
+                                        <TextBlock x:Name="TxtPeopleNow"
+                                                   Grid.Column="1"
+                                                   Text="0"
+                                                   FontWeight="Bold"
+                                                   Margin="8,0,0,0"/>
+                                        <TextBlock x:Name="TxtPeopleWarn"
+                                                   Grid.Column="2"
+                                                   Text="-"
+                                                   Foreground="#FFB3B3"
+                                                   FontWeight="Bold"
+                                                   Margin="12,0,0,0"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource CheckRowStyle}">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="안전모 착용" FontSize="15" FontWeight="SemiBold"/>
-                                    <TextBlock Grid.Column="1" Text="❗ NG" Foreground="#FF3B3B" FontWeight="Bold"/>
+                                    <TextBlock x:Name="TxtHelmet"
+                                               Grid.Column="1"
+                                               Text="-"
+                                               Foreground="#9DB7FF"
+                                               FontWeight="Bold"/>
                                 </Grid>
                             </Border>
 
@@ -324,7 +526,11 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="안전대(하네스) 착용" FontSize="15" FontWeight="SemiBold"/>
-                                    <TextBlock Grid.Column="1" Text="❗ NG" Foreground="#FF3B3B" FontWeight="Bold"/>
+                                    <TextBlock x:Name="TxtHarness"
+                                               Grid.Column="1"
+                                               Text="-"
+                                               Foreground="#9DB7FF"
+                                               FontWeight="Bold"/>
                                 </Grid>
                             </Border>
 
@@ -335,19 +541,29 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="위험구역 이탈 여부" FontSize="15" FontWeight="SemiBold"/>
-                                    <TextBlock Grid.Column="1" Text="✅ OK" Foreground="#2EE59D" FontWeight="Bold"/>
+                                    <TextBlock x:Name="TxtZone"
+                                               Grid.Column="1"
+                                               Text="-"
+                                               Foreground="#9DB7FF"
+                                               FontWeight="Bold"/>
                                 </Grid>
                             </Border>
 
                             <Border Style="{StaticResource CheckRowStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="알림 로그" FontSize="14" FontWeight="Bold" Margin="0,0,0,6"/>
-                                    <Border Background="#081028" CornerRadius="10" Padding="10" BorderBrush="#243A66" BorderThickness="1">
-                                        <StackPanel>
-                                            <TextBlock Text="19:37:12  [경고] 안전모 미착용 감지" Foreground="#FFB3B3"/>
-                                            <TextBlock Text="19:37:18  [경고] 안전대 미착용 감지" Foreground="#FFB3B3" Margin="0,4,0,0"/>
-                                            <TextBlock Text="19:37:40  [정상] 위험구역 이탈 없음" Foreground="#9DB7FF" Margin="0,4,0,0"/>
-                                        </StackPanel>
+                                    <TextBlock Text="알림 로그"
+                                               FontSize="14"
+                                               FontWeight="Bold"
+                                               Margin="0,0,0,6"/>
+                                    <Border Background="#081028"
+                                            CornerRadius="10"
+                                            Padding="10"
+                                            BorderBrush="#243A66"
+                                            BorderThickness="1">
+                                        <TextBlock x:Name="TxtAlertLog"
+                                                   Text="(로그 없음)"
+                                                   Foreground="#9DB7FF"
+                                                   TextWrapping="Wrap"/>
                                     </Border>
                                 </StackPanel>
                             </Border>
@@ -359,17 +575,19 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="월간 리포트" FontSize="14" FontWeight="Bold"/>
-                                    <Button Grid.Column="1" Content="📄 내보내기" Margin="0" Padding="10,6" IsEnabled="False"/>
+                                    <Button Grid.Column="1"
+                                            Content="📄 내보내기"
+                                            Margin="0"
+                                            Padding="10,6"
+                                            IsEnabled="False"/>
                                 </Grid>
                             </Border>
 
                         </StackPanel>
                     </GroupBox>
-
                 </Grid>
 
                 <!-- Bottom -->
-                
                 <Grid Grid.Row="1" Margin="0,0,0,10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -380,25 +598,46 @@
                     <Border Grid.Column="0" Style="{StaticResource CardStyle}">
                         <StackPanel>
                             <TextBlock Text="월간 경고 건수" Foreground="#9DB7FF"/>
-                            <TextBlock Text="38" FontSize="34" FontWeight="Bold" Margin="0,6,0,0"/>
-                            <TextBlock Text="지난달 대비 +12" Foreground="#FFB3B3" Margin="0,6,0,0"/>
+                            <TextBlock x:Name="TxtMonthlyWarn"
+                                       Text="0"
+                                       FontSize="34"
+                                       FontWeight="Bold"
+                                       Margin="0,6,0,0"/>
+                            <TextBlock x:Name="TxtMonthlyDelta"
+                                       Text="지난달 대비 -"
+                                       Foreground="#FFB3B3"
+                                       Margin="0,6,0,0"/>
                         </StackPanel>
                     </Border>
 
                     <Border Grid.Column="1" Style="{StaticResource CardStyle}">
                         <StackPanel>
                             <TextBlock Text="작업 유형별 경고 비율" Foreground="#9DB7FF"/>
-                            <TextBlock Text="고소작업대 45% · 사다리 34% · 비계 21%" FontSize="14" Margin="0,8,0,0"/>
-                            <TextBlock Text="(차트는 다음 단계에서 붙이자)" Foreground="#6F86C8" Margin="0,8,0,0"/>
+                            <TextBlock x:Name="TxtWarnRatio"
+                                       Text="(데모) 고소작업대 45% · 사다리 55%"
+                                       FontSize="14"
+                                       Margin="0,8,0,0"/>
+                            <TextBlock Text="(차트는 다음 단계에서 붙이자)"
+                                       Foreground="#6F86C8"
+                                       Margin="0,8,0,0"/>
                         </StackPanel>
                     </Border>
 
                     <Border Grid.Column="2" Style="{StaticResource CardStyle}">
                         <StackPanel>
                             <TextBlock Text="위반 TOP 3" Foreground="#9DB7FF"/>
-                            <TextBlock Text="1) 안전모 미착용 42%" Margin="0,8,0,0" Foreground="#FFB3B3"/>
-                            <TextBlock Text="2) 안전대 미착용 31%" Margin="0,4,0,0" Foreground="#FFB3B3"/>
-                            <TextBlock Text="3) 위험구역 접근 19%" Margin="0,4,0,0" Foreground="#FFB3B3"/>
+                            <TextBlock x:Name="TxtTop1"
+                                       Text="1) -"
+                                       Margin="0,8,0,0"
+                                       Foreground="#FFB3B3"/>
+                            <TextBlock x:Name="TxtTop2"
+                                       Text="2) -"
+                                       Margin="0,4,0,0"
+                                       Foreground="#FFB3B3"/>
+                            <TextBlock x:Name="TxtTop3"
+                                       Text="3) -"
+                                       Margin="0,4,0,0"
+                                       Foreground="#FFB3B3"/>
                         </StackPanel>
                     </Border>
                 </Grid>
