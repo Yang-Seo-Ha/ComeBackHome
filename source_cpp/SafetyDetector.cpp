@@ -2,7 +2,7 @@
 #include <iostream>
 
 SafetyDetector::SafetyDetector() {
-    string base = "C:/Users/dbsdm/Desktop/cppopencv/opencv1/";
+    string base = "models_cpp/";
     try {
         net = readNetFromCaffe(base + "deploy.prototxt", base + "mobilenet_iter_73000.caffemodel");
         helmetNet = readNetFromDarknet(base + "yolov3-tiny.cfg", base + "yolov3-tiny.weights");
