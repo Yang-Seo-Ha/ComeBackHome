@@ -2,12 +2,13 @@
 #include <iostream>
 
 SafetyDetector::SafetyDetector() {
+    // 상대 경로로 변경 (실행파일 위치의 models_cpp 폴더 기준)
     string base = "models_cpp/";
     try {
         net = readNetFromCaffe(base + "deploy.prototxt", base + "mobilenet_iter_73000.caffemodel");
         helmetNet = readNetFromDarknet(base + "yolov3-tiny.cfg", base + "yolov3-tiny.weights");
     }
-    catch (...) { cout << "❌ 모델 로드 실패" << endl; }
+    catch (...) { cout << "❌ 모델 로드 실패: models_cpp 폴더에 모델 파일이 있는지 확인하세요." << endl; }
 }
 
 Rect SafetyDetector::scaleRect(const Rect& oriBox, int oriW, int oriH) {
@@ -20,18 +21,15 @@ Rect SafetyDetector::enlargeRectFixed(const Rect& in, int pw, int ph, int fc, in
     return out & Rect(0, 0, fc, fr);
 }
 
-// ⭐ [감도 상향] 헬멧 색상 탐지 (노란색 범위 확장)
 bool SafetyDetector::detectHelmetByColor(const Mat& head, Mat& mask, float& conf) {
     if (head.empty()) return false;
     Mat hsv; cvtColor(head, hsv, COLOR_BGR2HSV);
     Mat mWhite, mYellow;
-    // 하얀색 (기존 유지)
     inRange(hsv, Scalar(0, 0, 180), Scalar(180, 40, 255), mWhite);
-    // ⭐ 노란색 범위 확장 (채도와 명도 하한선을 낮춤)
     inRange(hsv, Scalar(10, 60, 80), Scalar(40, 255, 255), mYellow);
     mask = mWhite | mYellow;
     conf = (float)countNonZero(mask) / (head.rows * head.cols);
-    return conf > 0.04; // 임계값 4%로 완화
+    return conf > 0.04;
 }
 
 bool SafetyDetector::detectHelmetByShape(const Mat& head, vector<Vec3f>& circles, float& conf) {

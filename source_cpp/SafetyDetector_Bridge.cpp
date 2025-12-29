@@ -1,25 +1,56 @@
-// SafetyDetector_Bridge.cpp
-#include "SafetyDetector.h"
+ï»¿#include "SafetyDetector.h"
+#include <iostream>
 
+using namespace cv;
+using namespace std;
+
+// ì „ì—­ ë³€ìˆ˜ë¡œ ë””í…í„° ê´€ë¦¬
 SafetyDetector* g_detector = nullptr;
 
+// ê¸°ì¡´ ë©”ì¸ì— ìˆë˜ ìµœì  ì„¤ì •ê°’ë“¤ ìœ ì§€
+DetectorConfig ladderCfg = { 0.15f, 0.1f, 0.25f, 0.15f, 0.22f, 0.2f, 0.45f };
+DetectorConfig platformCfg = { 0.15f, 0.2f, 0.2f, 0.2f, 0.25f, 0.15f, 0.5f };
+
+// ê¸°ì¡´ ìƒ‰ìƒ ë²”ìœ„ ìœ ì§€
+vector<pair<Scalar, Scalar>> GetDefaultVestColors() {
+    vector<pair<Scalar, Scalar>> colors;
+    colors.push_back({ Scalar(0, 100, 50), Scalar(10, 255, 255) });    // ë¹¨ê°•
+    colors.push_back({ Scalar(170, 100, 50), Scalar(180, 255, 255) });
+    colors.push_back({ Scalar(20, 100, 100), Scalar(40, 255, 255) });  // ë…¸ë‘
+    colors.push_back({ Scalar(40, 100, 100), Scalar(80, 255, 255) });  // í˜•ê´‘
+    return colors;
+}
+
 extern "C" {
-    // 1. µğ·ºÅÍ ÃÊ±âÈ­ (¸ğµå ¼±ÅÃ)
+    // 1. ë””í…í„° ì´ˆê¸°í™”
     __declspec(dllexport) void InitDetector(int mode) {
         if (g_detector) delete g_detector;
         if (mode == 1) g_detector = new LadderDetector();
         else g_detector = new PlatformDetector();
     }
 
-    // 2. Å½Áö ·çÇÁ ½ÇÇà (C# ÀÌº¥Æ®¿¡ ÀÇÇØ È£ÃâµÊ)
-    __declspec(dllexport) void RunDetectionLoop() {
+    // 2. í•œ í”„ë ˆì„ ì´ë¯¸ì§€ íƒì§€ ì‹¤í–‰ (C#ì—ì„œ ê²½ë¡œë¥¼ ë„˜ê²¨ë°›ìŒ)
+    __declspec(dllexport) void ProcessSafety(const char* imagePath, int mode) {
         if (!g_detector) return;
-        // ±âÁ¸¿¡ ¸¸µç while(true)°¡ Æ÷ÇÔµÈ Å½Áö ·ÎÁ÷ ½ÇÇà
-        // g_detector->runDetection(...); 
+
+        Mat frame = imread(imagePath);
+        if (frame.empty()) {
+            cout << "âŒ ì´ë¯¸ì§€ë¥¼ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤: " << imagePath << endl;
+            return;
+        }
+
+        auto colors = GetDefaultVestColors();
+        DetectorConfig currentCfg = (mode == 1) ? ladderCfg : platformCfg;
+
+        // ì‹¤ì œ ëª¨ë“  íƒì§€ ë° imshow ëŒ€ì‹œë³´ë“œ ì¶œë ¥ ì‹¤í–‰
+        g_detector->runDetection(frame, colors, currentCfg);
     }
 
-    // 3. Á¾·á
+    // 3. ë©”ëª¨ë¦¬ í•´ì œ
     __declspec(dllexport) void ReleaseDetector() {
-        if (g_detector) { delete g_detector; g_detector = nullptr; }
+        if (g_detector) {
+            delete g_detector;
+            g_detector = nullptr;
+        }
     }
 }

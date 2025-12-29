@@ -3,7 +3,9 @@
 vector<Rect> LadderDetector::runDetection(Mat& frame, vector<pair<Scalar, Scalar>>& colorRanges, const DetectorConfig& cfg) {
     vector<Rect> res;
     Mat blob = blobFromImage(frame, 0.007843, Size(300, 300), Scalar(127.5, 127.5, 127.5));
-    net.setInput(blob); Mat detM(net.forward().size[2], net.forward().size[3], CV_32F, net.forward().ptr<float>());
+    net.setInput(blob);
+    Mat prob = net.forward();
+    Mat detM(prob.size[2], prob.size[3], CV_32F, prob.ptr<float>());
 
     Rect rawBox; float maxC = 0;
     for (int i = 0; i < detM.rows; i++) {
@@ -27,14 +29,13 @@ vector<Rect> LadderDetector::runDetection(Mat& frame, vector<pair<Scalar, Scalar
         detectHelmetByEdge(head, eMask, eC);
         helmetOk = (cR || sR);
 
-        // 4분할 디버그 패널 구성
         Mat temp = Mat::zeros(head.rows * 2, head.cols * 2, CV_8UC3);
         int w = head.cols, h = head.rows;
-        Mat cV; cvtColor(cMask, cV, COLOR_GRAY2BGR); cV.copyTo(temp(Rect(0, 0, w, h))); // Color
+        Mat cV; cvtColor(cMask, cV, COLOR_GRAY2BGR); cV.copyTo(temp(Rect(0, 0, w, h)));
         Mat sV = head.clone(); for (auto& c : circles) circle(sV, Point(cvRound(c[0]), cvRound(c[1])), cvRound(c[2]), Scalar(0, 255, 0), 2);
-        sV.copyTo(temp(Rect(w, 0, w, h))); // Shape
-        Mat eV; cvtColor(eMask, eV, COLOR_GRAY2BGR); eV.copyTo(temp(Rect(0, h, w, h))); // Edge
-        head.copyTo(temp(Rect(w, h, w, h))); // Original
+        sV.copyTo(temp(Rect(w, 0, w, h)));
+        Mat eV; cvtColor(eMask, eV, COLOR_GRAY2BGR); eV.copyTo(temp(Rect(0, h, w, h)));
+        head.copyTo(temp(Rect(w, h, w, h)));
         resize(temp, debugViz, Size(400, 400));
     }
 

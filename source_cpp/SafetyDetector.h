@@ -5,39 +5,52 @@
 #include <string>
 
 using namespace cv;
-using namespace dnn;
+using namespace cv::dnn;
 using namespace std;
 
+// 설정값 구조체
 struct DetectorConfig {
     float confidenceThreshold;
-    float padUp, padDown, padSide;
-    float headHeightRate, bodyStartRate, bodyHeightRate;
+    float helmetColorConf;
+    float helmetShapeConf;
+    float helmetEdgeConf;
+    float vestColorConf;
+    float vestEdgeConf;
+    float finalConf;
 };
 
+// 부모 클래스
 class SafetyDetector {
 protected:
-    Net net; Net helmetNet; Rect lastRect; bool isFirstDetection = true; int missingFrames = 0;
-    // 보조 함수 (헬멧 전용으로 통합)
-    Rect enlargeRectFixed(const Rect& inputRect, int padW, int padH, int frameCols, int frameRows);
-    Rect scaleRect(const Rect& originalBox, int oriW, int oriH);
-    bool detectHelmetByColor(const Mat& headRegion, Mat& outMask, float& confidence);
-    bool detectHelmetByShape(const Mat& headRegion, vector<Vec3f>& circles, float& confidence);
-    bool detectHelmetByEdge(const Mat& headRegion, Mat& outEdges, float& confidence);
+    Net net;
+    Net helmetNet;
+    Rect lastRect;
+    bool isFirstDetection = true;
 
 public:
     SafetyDetector();
     virtual ~SafetyDetector() {}
+
     virtual vector<Rect> runDetection(Mat& frame, vector<pair<Scalar, Scalar>>& colorRanges, const DetectorConfig& cfg) = 0;
-    void resetState() { isFirstDetection = true; missingFrames = 0; lastRect = Rect(); }
+
+    void resetState() { isFirstDetection = true; }
+
+    // 공통 유틸 함수
+    Rect scaleRect(const Rect& oriBox, int oriW, int oriH);
+    Rect enlargeRectFixed(const Rect& in, int pw, int ph, int fc, int fr);
+    bool detectHelmetByColor(const Mat& head, Mat& mask, float& conf);
+    bool detectHelmetByShape(const Mat& head, vector<Vec3f>& circles, float& conf);
+    bool detectHelmetByEdge(const Mat& head, Mat& edge, float& conf);
 };
 
+// 사다리 디텍터
 class LadderDetector : public SafetyDetector {
 public:
     vector<Rect> runDetection(Mat& frame, vector<pair<Scalar, Scalar>>& colorRanges, const DetectorConfig& cfg) override;
 };
 
+// 고소대 디텍터
 class PlatformDetector : public SafetyDetector {
 public:
-    // 하네스 탐지 함수 제거됨
     vector<Rect> runDetection(Mat& frame, vector<pair<Scalar, Scalar>>& colorRanges, const DetectorConfig& cfg) override;
 };

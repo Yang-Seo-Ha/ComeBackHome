@@ -3,7 +3,9 @@
 vector<Rect> PlatformDetector::runDetection(Mat& frame, vector<pair<Scalar, Scalar>>& colorRanges, const DetectorConfig& cfg) {
     vector<Rect> res;
     Mat blob = blobFromImage(frame, 0.007843, Size(300, 300), Scalar(127.5, 127.5, 127.5));
-    net.setInput(blob); Mat detM(net.forward().size[2], net.forward().size[3], CV_32F, net.forward().ptr<float>());
+    net.setInput(blob);
+    Mat prob = net.forward();
+    Mat detM(prob.size[2], prob.size[3], CV_32F, prob.ptr<float>());
 
     Rect rawBox; float maxC = 0;
     for (int i = 0; i < detM.rows; i++) {
@@ -16,7 +18,6 @@ vector<Rect> PlatformDetector::runDetection(Mat& frame, vector<pair<Scalar, Scal
     if (maxC > 0) { lastRect = rawBox; isFirstDetection = false; }
     else if (!isFirstDetection) rawBox = lastRect; else return res;
 
-    // 영역 설정 (헬멧 위주)
     Rect pBox = enlargeRectFixed(rawBox, 25, 60, frame.cols, frame.rows);
     Rect hROI = Rect(pBox.x, pBox.y, pBox.width, (int)(pBox.height * 0.28)) & Rect(0, 0, frame.cols, frame.rows);
 
@@ -28,7 +29,6 @@ vector<Rect> PlatformDetector::runDetection(Mat& frame, vector<pair<Scalar, Scal
         detectHelmetByEdge(head, eMask, eC);
         helmetOk = (cR || sR);
 
-        // 고소대도 사다리와 동일하게 4분할 헬멧 디버그 패널 사용
         Mat temp = Mat::zeros(head.rows * 2, head.cols * 2, CV_8UC3);
         int w = head.cols, h = head.rows;
         Mat cV; cvtColor(cMask, cV, COLOR_GRAY2BGR); cV.copyTo(temp(Rect(0, 0, w, h)));
@@ -39,7 +39,6 @@ vector<Rect> PlatformDetector::runDetection(Mat& frame, vector<pair<Scalar, Scal
         resize(temp, debugViz, Size(400, 400));
     }
 
-    // 통합 대시보드 출력 (헬멧 결과만 반영)
     Mat canvas = Mat::zeros(600, 1200, CV_8UC3);
     Mat mainV; resize(frame, mainV, Size(800, 600));
     Rect sBox = scaleRect(pBox, frame.cols, frame.rows);
