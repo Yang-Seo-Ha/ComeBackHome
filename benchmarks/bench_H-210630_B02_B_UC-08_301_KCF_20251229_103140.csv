@@ -1,0 +1,2 @@
+﻿seq,tracker,total_frames,init_frame,updates,ok,ok_rate,avg_update_ms,est_fps,person_pred_folder
+C:\AI_model\122.고소작업 현장 실시간 영상 데이터\01.데이터\1.Training\원천데이터\TS_06_사다리작업\사다리작업\불안전한상태(UC)\H-210630_B02_B_UC-08_301,KCF,208,0,207,98,0.473,148.849,6.7,pred_person
