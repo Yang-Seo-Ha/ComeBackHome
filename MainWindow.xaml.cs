@@ -404,6 +404,7 @@ namespace ComeBackHome
         private void PrepareFramesFromPath(string? seqPath)
         {
             _playTimer.Stop();
+            _playStartedAt = DateTime.Now;
 
             // hold 상태 리셋(채널 전환 시)
             _lastSeenPeople = DateTime.MinValue;
@@ -521,6 +522,17 @@ namespace ComeBackHome
             }
         }
 
+        // ✅ 경고/알림/CSV 기록 워밍업(재생 시작 후 N초 동안 집계 보류)
+        private static readonly TimeSpan WARN_LOG_WARMUP = TimeSpan.FromSeconds(5);
+        private DateTime? _playStartedAt = null;
+
+        private bool IsWarnLogWarmup(DateTime now)
+        {
+            if (_playStartedAt == null) return true;
+            return (now - _playStartedAt.Value) < WARN_LOG_WARMUP;
+        }
+
+
         private void BtnPlayStop_Click(object sender, RoutedEventArgs e)
         {
             if (_frames.Count == 0)
@@ -539,9 +551,12 @@ namespace ComeBackHome
                 BtnReport.IsEnabled = true;
 
                 TxtCctvStatus.Text = "Paused";
+                _playStartedAt = null;
             }
             else
             {
+                _playStartedAt = DateTime.Now;
+
                 int fps = Math.Max(1, _cfg.Fps);
                 _playTimer.Interval = TimeSpan.FromMilliseconds(1000.0 / fps);
                 _playTimer.Start();
@@ -690,6 +705,7 @@ namespace ComeBackHome
         private void UpdateRightSummary(List<Detection> personDets, List<Detection> ppeDets, List<Detection> ucDets, List<Detection> highDets)
         {
             var now = DateTime.Now;
+            bool warmup = IsWarnLogWarmup(now);
 
             // 1) people raw
             int peopleRaw = personDets.Count;
@@ -795,31 +811,44 @@ namespace ComeBackHome
             // =========================
             // ✅ (핵심) 누적 경고는 "유형별 쿨다운" 통과 시만 +1
             // =========================
-            int added = 0;
-
-            if (peopleAbn && CanCountWarn("PeopleMismatch", now)) added++;
-            if (helmetAbn && CanCountWarn("HelmetMissing", now)) added++;
-            if (harnessAbn && CanCountWarn("HarnessMissing", now)) added++;
-            if (unsafeAbn && CanCountWarn("UnsafeInstall", now)) added++;
-
-            if (added > 0)
+            // =========================
+            // ✅ (핵심) 누적 경고는 "유형별 쿨다운" 통과 시만 +1
+            //     단, 재생 시작 후 5초(WARMUP) 동안은 집계 보류
+            // =========================
+            if (warmup)
             {
-                _warnToday += added;
-                TxtWarnToday.Text = $"{_warnToday}건";
-
-                string msg = $"{now:HH:mm} 비정상 감지 (+{added})";
-                TxtAlertLog.Text = msg;
-                TxtBottomLog.Text = msg;
+                // 워밍업 안내(원하면 TxtAlertLog는 건드리지 않아도 됨)
+                TxtAlertLog.Text = $"워밍업 중... ({(int)WARN_LOG_WARMUP.TotalSeconds}s) 집계 보류";
+                TxtBottomLog.Text = $"워밍업 중... ({(int)WARN_LOG_WARMUP.TotalSeconds}s) 집계 보류";
             }
+            else
+            {
+                int added = 0;
+
+                if (peopleAbn && CanCountWarn("PeopleMismatch", now)) added++;
+                if (helmetAbn && CanCountWarn("HelmetMissing", now)) added++;
+                if (harnessAbn && CanCountWarn("HarnessMissing", now)) added++;
+                if (unsafeAbn && CanCountWarn("UnsafeInstall", now)) added++;
+
+                if (added > 0)
+                {
+                    _warnToday += added;
+                    TxtWarnToday.Text = $"{_warnToday}건";
+
+                    string msg = $"{now:HH:mm} 비정상 감지 (+{added})";
+                    TxtAlertLog.Text = msg;
+                    TxtBottomLog.Text = msg;
+                }
+            }
+
 
             // =========================
             // ✅ 이벤트 로그(리포트용)는 기존처럼 기록 (1초 디바운스 유지)
             // =========================
-            if (abnormalCount > 0 && _workStartAt != null && _workEndAt == null)
-            {
+            if(!warmup && abnormalCount > 0 && _workStartAt != null && _workEndAt == null)
+{
                 if (peopleAbn)
                     AddEventOncePerSecond(now, "PeopleMismatch", $"peopleStable={peopleStable}, minExpected={EXPECTED_PEOPLE}");
-
 
                 if (helmetAbn)
                     AddEventOncePerSecond(now, "HelmetMissing", $"peopleStable={peopleStable}, helmetCount={helmetCount}");
@@ -830,6 +859,7 @@ namespace ComeBackHome
                 if (unsafeAbn)
                     AddEventOncePerSecond(now, "UnsafeInstall", TxtUcSummary.Text);
             }
+
         }
 
 
