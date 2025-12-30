@@ -1,0 +1,49 @@
+{
+  "DatasetRoot": "C:\Users\LG\Downloads\CBT_test",
+  "DefaultSequence": "seq01",
+  "Fps": 30,
+  "PythonExe": "C:\\Users\\user2\\anaconda3\\envs\\cbh\\python.exe",
+  // =====================
+  // UC (ladder_uc78_v1) : UC-07, UC-08
+  // =====================
+  "InferScript": "scripts\\infer_to_txt.py",
+  "ModelPath": "assets\\models\\ladder_uc78_v1.pt",
+  "PredFolder": "pred_uc",
+  "AutoInferEnabled": true,
+  "InferIntervalMs": 1000,
+  "InferSingleFrameOnly": true,
+  // =====================
+  // PERSON (YOLOv8n or YOLOv8s)
+  // =====================
+  "PersonInferScript": "scripts\\person_to_txt.py",
+  "PersonModelPath": "assets\\models\\yolov8n.pt",
+  "PersonPredFolder": "pred_person",
+  "AutoPersonEnabled": true,
+  "PersonIntervalMs": 1200,
+  "PersonSingleFrameOnly": true,
+  // =====================
+  // PPE (ppe_v2)
+  // =====================
+  "PpeInferScript": "scripts\\infer_to_txt.py",
+  "PpeModelPath": "assets\\models\\ppe_v2.pt",
+  "PpePredFolder": "pred_ppe",
+  "AutoPpeEnabled": true,
+  "PpeIntervalMs": 1400,
+  "PpeSingleFrameOnly": true,
+  // =====================
+  // HIGH (high_v1) : SO-xx / UC-09~12 / WO-xx
+  // =====================
+  "HighInferScript": "scripts\\infer_to_txt.py",
+  "HighModelPath": "assets\\models\\high_v1.pt",
+  "HighPredFolder": "pred_high",
+  "AutoHighEnabled": true,
+  "HighIntervalMs": 1000,
+  "HighSingleFrameOnly": true,
+  // =====================
+  // Common infer params
+  // =====================
+  "ImgSz": 640,
+  "Conf": 0.25,
+  "Iou": 0.45,
+  "Device": "cpu"
+}

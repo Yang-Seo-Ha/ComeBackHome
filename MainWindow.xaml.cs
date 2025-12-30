@@ -30,7 +30,6 @@ namespace ComeBackHome
         public string InferScript { get; set; } = @"scripts\infer_to_txt.py";
         public string ModelPath { get; set; } = @"assets\models\ladder_uc78_v1.pt";
         public string PredFolder { get; set; } = "pred_uc";
-
         public bool AutoInferEnabled { get; set; } = true;
         public int InferIntervalMs { get; set; } = 1000;
         public bool InferSingleFrameOnly { get; set; } = true;
@@ -39,7 +38,6 @@ namespace ComeBackHome
         public string PersonInferScript { get; set; } = @"scripts\person_to_txt.py";
         public string PersonModelPath { get; set; } = @"assets\models\yolov8s.pt";
         public string PersonPredFolder { get; set; } = "pred_person";
-
         public bool AutoPersonEnabled { get; set; } = true;
         public int PersonIntervalMs { get; set; } = 1200;
         public bool PersonSingleFrameOnly { get; set; } = true;
@@ -48,7 +46,6 @@ namespace ComeBackHome
         public string PpeInferScript { get; set; } = @"scripts\infer_to_txt.py";
         public string PpeModelPath { get; set; } = @"assets\models\ppe_v2.pt";
         public string PpePredFolder { get; set; } = "pred_ppe";
-
         public bool AutoPpeEnabled { get; set; } = true;
         public int PpeIntervalMs { get; set; } = 1400;
         public bool PpeSingleFrameOnly { get; set; } = true;
@@ -57,7 +54,6 @@ namespace ComeBackHome
         public string HighInferScript { get; set; } = @"scripts\infer_to_txt.py";
         public string HighModelPath { get; set; } = @"assets\models\high_v1.pt";
         public string HighPredFolder { get; set; } = "pred_high";
-
         public bool AutoHighEnabled { get; set; } = true;
         public int HighIntervalMs { get; set; } = 1000;
         public bool HighSingleFrameOnly { get; set; } = true;
@@ -108,6 +104,36 @@ namespace ComeBackHome
         private int _framesSinceYolo = 0;
         private int _framesSinceTrackerOk = 0;
 
+        private const int EXPECTED_PEOPLE = 2;
+        private int _warnToday = 0;
+
+        // =========================
+        // 안정화(hold)용 상태
+        // =========================
+        private static readonly TimeSpan HOLD_PEOPLE = TimeSpan.FromSeconds(3);
+        private static readonly TimeSpan HOLD_PPE = TimeSpan.FromSeconds(6);   // 헬멧/하네스 미탐지 유지시간(원하면 5~7초로 조절)
+        private static readonly TimeSpan HOLD_UNSAFE = TimeSpan.FromSeconds(5); // 미설치물 홀드(5초)
+
+        private DateTime _lastSeenUnsafe = DateTime.MinValue;
+        private string _lastUnsafeText = "-";
+
+        // people
+        private DateTime _lastSeenPeople = DateTime.MinValue;
+        private int _lastPeopleCount = 0;
+
+        // helmet
+        private DateTime _lastSeenHelmetOk = DateTime.MinValue;
+
+        // harness
+        private DateTime _lastSeenHarnessOk = DateTime.MinValue;
+
+        // ✅ A/B 폴더(좌측 선택으로 지정)
+        private string? _seqPathA = null;
+        private string? _seqPathB = null;
+
+        // ✅ 현재 선택된 시퀀스(기존 CmbChannel.SelectedValue 역할)
+        private string? _currentSeqPath = null;
+
         private readonly Dictionary<int, string> _ucClassMap = new Dictionary<int, string>
         {
             { 0, "UC-07" },
@@ -139,6 +165,14 @@ namespace ComeBackHome
             { 6, "WO-08" },
             { 7, "WO-01" },
         };
+
+        private readonly HashSet<string> _unsafeInstallCodes =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "SO-07","SO-05",
+                "UC-09","UC-10","UC-11","UC-12",
+                "UC-07","UC-08"
+            };
 
         private readonly Dictionary<string, Brush> _clsBrush =
             new Dictionary<string, Brush>(StringComparer.OrdinalIgnoreCase)
@@ -187,12 +221,19 @@ namespace ComeBackHome
             TxtCctvStatus.Text = "Booting...";
             TxtHeaderTime.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
 
-            TxtUcCount.Text = "0";
-            TxtPersonCount.Text = "0";
-            TxtPpeCount.Text = "0";
-            TxtHighCount.Text = "0";
-            TxtPeopleNow.Text = "0";
-            TxtPeopleWarn.Text = "-";
+            TxtSelectedWork.Text = "-";
+            TxtWarnToday.Text = "0건";
+            TxtWarnLevel.Text = "LIVE";
+            TxtLastDetectTime.Text = "마지막 감지: -";
+
+            TxtPeopleSummary.Text = $"0 / {EXPECTED_PEOPLE}";
+            TxtHelmetSummary.Text = "(미착용)";
+            TxtHarnessSummary.Text = "(미착용)";
+            TxtUcSummary.Text = "-";
+            TxtRiskSummary.Text = "정상";
+            TxtRiskDetail.Text = "(비정상 0건)";
+            TxtAlertLog.Text = "(로그 없음)";
+            TxtBottomLog.Text = "(로그 없음)";
 
             _clockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _clockTimer.Tick += (_, __) => TxtHeaderTime.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
@@ -201,9 +242,6 @@ namespace ComeBackHome
             _projectRoot = FindProjectRoot(AppDomain.CurrentDomain.BaseDirectory);
 
             LoadLocalConfig();
-            ScanChannelsToCombo();
-
-            CmbChannel.SelectionChanged += (_, __) => PrepareFramesFromSelectedChannel();
 
             // ✅ 트래킹 체크박스 -> cfg 반영
             if (ChkTracking != null)
@@ -263,6 +301,115 @@ namespace ComeBackHome
                 try { _highTimer.Stop(); } catch { }
                 try { _clockTimer?.Stop(); } catch { }
             };
+
+            // ✅ 선택 전에는 재생할 프레임이 없을 수 있음
+            TxtCctvStatus.Text = "좌측에서 A/B 구역을 선택해 시퀀스 폴더를 지정하세요.";
+        }
+
+        // =========================
+        // ✅ Left: A/B 폴더 선택(채널 콤보 제거)
+        // =========================
+        private void BtnSelectA_Click(object sender, RoutedEventArgs e)
+        {
+            var picked = PickSequenceFolder(_cfg.DatasetRoot);
+            if (string.IsNullOrWhiteSpace(picked)) return;
+
+            _seqPathA = picked;
+            _currentSeqPath = _seqPathA;
+
+            TxtSelectedWork.Text = "A구역 · 고소작업대 작업";
+            PrepareFramesFromPath(_currentSeqPath);
+        }
+
+        private void BtnSelectB_Click(object sender, RoutedEventArgs e)
+        {
+            var picked = PickSequenceFolder(_cfg.DatasetRoot);
+            if (string.IsNullOrWhiteSpace(picked)) return;
+
+            _seqPathB = picked;
+            _currentSeqPath = _seqPathB;
+
+            TxtSelectedWork.Text = "B구역 · 사다리 작업";
+            PrepareFramesFromPath(_currentSeqPath);
+        }
+
+        // ✅ WinForms 제거: 이미지 1개 선택 → 그 폴더를 시퀀스로 사용
+        private string? PickSequenceFolder(string initialRoot)
+        {
+            try
+            {
+                var dlg = new OpenFileDialog
+                {
+                    Title = "시퀀스 폴더에서 이미지 1장을 선택하세요",
+                    Filter = "Image Files|*.png;*.jpg;*.jpeg;*.bmp",
+                    CheckFileExists = true,
+                    Multiselect = false,
+                    InitialDirectory = Directory.Exists(initialRoot)
+                        ? initialRoot
+                        : Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+                };
+
+                if (dlg.ShowDialog() == true)
+                {
+                    return Path.GetDirectoryName(dlg.FileName);
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"폴더 선택 실패: {ex.Message}");
+                return null;
+            }
+        }
+
+        // ✅ 콤보박스 대신, 경로로 프레임 로드
+        private void PrepareFramesFromPath(string? seqPath)
+        {
+            _playTimer.Stop();
+
+            // hold 상태 리셋(채널 전환 시)
+            _lastSeenPeople = DateTime.MinValue;
+            _lastPeopleCount = 0;
+            _lastSeenHelmetOk = DateTime.MinValue;
+            _lastSeenHarnessOk = DateTime.MinValue;
+            _lastSeenUnsafe = DateTime.MinValue;
+            _lastUnsafeText = "-";
+
+            _isPlaying = false;
+            _frameIndex = 0;
+
+            if (_cfg.TrackingEnabled)
+            {
+                try { _personTracker.Reset(); } catch { }
+                _hasLastTrackBox = false;
+                _lastTrackBox = default;
+                _framesSinceYolo = 0;
+                _framesSinceTrackerOk = 0;
+            }
+
+            if (string.IsNullOrWhiteSpace(seqPath) || !Directory.Exists(seqPath))
+            {
+                TxtCctvStatus.Text = "No sequence selected.";
+                return;
+            }
+
+            _frames = Directory.GetFiles(seqPath)
+                .Where(p => p.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
+                         || p.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase)
+                         || p.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(p => p)
+                .ToList();
+
+            if (_frames.Count == 0)
+            {
+                TxtCctvStatus.Text = $"No frames found:\n{seqPath}";
+                ImgCctv.Source = null;
+                OverlayCanvas.Children.Clear();
+                return;
+            }
+
+            TxtCctvStatus.Text = $"Channel: {Path.GetFileName(seqPath)} / Frames: {_frames.Count}";
+            ShowFrame(0);
         }
 
         // ✅ 콤보박스 변경 시 트래커 교체
@@ -328,7 +475,7 @@ namespace ComeBackHome
                 if (string.IsNullOrWhiteSpace(_cfg.HighPredFolder)) _cfg.HighPredFolder = "pred_high";
 
                 TxtCctvStatus.Text =
-                    $"✅ Config OK\nRoot:\n{_cfg.DatasetRoot}\nFPS: {_cfg.Fps}\nConfig:\n{cfgPath}\nProjectRoot:\n{_projectRoot}";
+                    $"✅ Config OK\nRoot:\n{_cfg.DatasetRoot}\nFPS: {_cfg.Fps}";
             }
             catch (Exception ex)
             {
@@ -336,95 +483,13 @@ namespace ComeBackHome
             }
         }
 
-        private void ScanChannelsToCombo()
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(_cfg.DatasetRoot) || !Directory.Exists(_cfg.DatasetRoot))
-                    return;
-
-                var seqDirs = Directory.GetDirectories(_cfg.DatasetRoot)
-                    .Select(d => new { Name = Path.GetFileName(d) ?? d, Full = d })
-                    .OrderBy(x => x.Name)
-                    .ToList();
-
-                CmbChannel.ItemsSource = seqDirs;
-                CmbChannel.DisplayMemberPath = "Name";
-                CmbChannel.SelectedValuePath = "Full";
-
-                if (seqDirs.Count == 0)
-                {
-                    TxtCctvStatus.Text = $"No sequences found in:\n{_cfg.DatasetRoot}";
-                    return;
-                }
-
-                if (!string.IsNullOrWhiteSpace(_cfg.DefaultSequence))
-                {
-                    var hit = seqDirs.FirstOrDefault(x => x.Name.Equals(_cfg.DefaultSequence, StringComparison.OrdinalIgnoreCase));
-                    CmbChannel.SelectedValue = hit != null ? hit.Full : seqDirs[0].Full;
-                }
-                else
-                {
-                    CmbChannel.SelectedValue = seqDirs[0].Full;
-                }
-
-                PrepareFramesFromSelectedChannel();
-            }
-            catch (Exception ex)
-            {
-                TxtCctvStatus.Text = $"Scan failed: {ex.Message}";
-            }
-        }
-
-        private void PrepareFramesFromSelectedChannel()
-        {
-            _playTimer.Stop();
-            _isPlaying = false;
-            _frameIndex = 0;
-
-            if (_cfg.TrackingEnabled)
-            {
-                try { _personTracker.Reset(); } catch { }
-                _hasLastTrackBox = false;
-                _lastTrackBox = default;
-                _framesSinceYolo = 0;
-                _framesSinceTrackerOk = 0;
-            }
-
-            string? seqPath = CmbChannel.SelectedValue as string;
-            if (string.IsNullOrWhiteSpace(seqPath) || !Directory.Exists(seqPath))
-            {
-                TxtCctvStatus.Text = "No channel selected.";
-                TxtSelectedChannel.Text = "-";
-                return;
-            }
-
-            TxtSelectedChannel.Text = Path.GetFileName(seqPath);
-
-            _frames = Directory.GetFiles(seqPath)
-                .Where(p => p.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
-                         || p.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase)
-                         || p.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
-                .OrderBy(p => p)
-                .ToList();
-
-            if (_frames.Count == 0)
-            {
-                TxtCctvStatus.Text = $"No frames found:\n{seqPath}";
-                ImgCctv.Source = null;
-                OverlayCanvas.Children.Clear();
-                return;
-            }
-
-            TxtCctvStatus.Text = $"Channel: {Path.GetFileName(seqPath)} / Frames: {_frames.Count}";
-            ShowFrame(0);
-        }
-
         private void BtnPlayStop_Click(object sender, RoutedEventArgs e)
         {
             if (_frames.Count == 0)
-                PrepareFramesFromSelectedChannel();
-            if (_frames.Count == 0) return;
+            {
+                TxtCctvStatus.Text = "좌측에서 A/B 구역을 선택해 시퀀스를 지정하세요.";
+                return;
+            }
 
             if (_isPlaying)
             {
@@ -467,8 +532,7 @@ namespace ComeBackHome
             _imgW = bmp.PixelWidth;
             _imgH = bmp.PixelHeight;
 
-            string? seqPath = CmbChannel.SelectedValue as string;
-            OverlayCanvas.Children.Clear();
+            string? seqPath = _currentSeqPath;
 
             // UC
             string predUcTxt = GetPredTxtPath(seqPath, imgPath, _cfg.PredFolder);
@@ -494,7 +558,7 @@ namespace ComeBackHome
                 ? LoadYoloLabelsFromTxt(predHighTxt, _imgW, _imgH, "high")
                 : new List<Detection>();
 
-            // ✅ tracking
+            // tracking
             Detection? trackDet = null;
             if (_cfg.TrackingEnabled)
             {
@@ -510,21 +574,8 @@ namespace ComeBackHome
             if (trackDet != null) all.Add(trackDet);
 
             DrawDetections(all);
+            UpdateRightSummary(personDets, ppeDets, ucDets, highDets);
 
-            // ✅ 우측 패널 갱신
-            TxtUcCount.Text = ucDets.Count.ToString();
-            TxtPersonCount.Text = personDets.Count.ToString();
-            TxtPpeCount.Text = ppeDets.Count.ToString();
-            TxtHighCount.Text = highDets.Count.ToString();
-
-            TxtPeopleNow.Text = personDets.Count.ToString();
-            TxtPeopleWarn.Text = (personDets.Count == 2) ? "정상" : "⚠ 인원 확인 필요";
-
-            // 좌측 인원
-            TxtPeopleLineA.Text = $"적정 2명 / 현재 {personDets.Count}명";
-            TxtPeopleLineB.Text = $"적정 2명 / 현재 {personDets.Count}명";
-            TxtPeopleBadgeA.Text = (personDets.Count == 2) ? "정상" : "인원확인";
-            TxtPeopleBadgeB.Text = (personDets.Count == 2) ? "정상" : "인원확인";
             TxtLastDetectTime.Text = $"마지막 감지: {DateTime.Now:HH:mm:ss}";
 
             string trkNote = _cfg.TrackingEnabled
@@ -532,11 +583,111 @@ namespace ComeBackHome
                 : "TRK:off";
 
             TxtCctvStatus.Text =
-                $"{Path.GetFileName(imgPath)} ({idx + 1}/{_frames.Count})  " +
-                $"UC:{ucDets.Count}  PERSON:{personDets.Count}  PPE:{ppeDets.Count}  HIGH:{highDets.Count}  {trkNote}";
+                $"{Path.GetFileName(imgPath)} ({idx + 1}/{_frames.Count}) " +
+                $"UC:{ucDets.Count} PERSON:{personDets.Count} PPE:{ppeDets.Count} HIGH:{highDets.Count} {trkNote}";
         }
 
-        // ✅ UpdateTracking: 파일 내 1개만 존재
+        private void UpdateRightSummary(List<Detection> personDets, List<Detection> ppeDets, List<Detection> ucDets, List<Detection> highDets)
+        {
+            var now = DateTime.Now;
+
+            // 1) people raw
+            int peopleRaw = personDets.Count;
+
+            // 2) people hold(3초 유지)
+            if (peopleRaw > 0)
+            {
+                _lastSeenPeople = now;
+                _lastPeopleCount = peopleRaw;
+            }
+
+            int peopleStable = (now - _lastSeenPeople <= HOLD_PEOPLE) ? _lastPeopleCount : 0;
+
+            TxtPeopleSummary.Text = $"{peopleStable} / {EXPECTED_PEOPLE}";
+
+            int helmetCount = ppeDets.Count(d => d.Cls.Equals("Helmet", StringComparison.OrdinalIgnoreCase));
+            int harnessCount = ppeDets.Count(d => d.Cls.Equals("Safety_Harness", StringComparison.OrdinalIgnoreCase));
+
+            // 3) Helmet 판정
+            if (peopleStable == 0)
+            {
+                TxtHelmetSummary.Text = "-"; // 대상 없음
+            }
+            else
+            {
+                if (helmetCount >= peopleStable)
+                    _lastSeenHelmetOk = now;
+
+                bool helmetOk = (now - _lastSeenHelmetOk <= HOLD_PPE);
+                TxtHelmetSummary.Text = helmetOk ? "(착용)" : "(미착용)";
+            }
+
+            // 4) Harness 판정
+            if (peopleStable == 0)
+            {
+                TxtHarnessSummary.Text = "-"; // 대상 없음
+            }
+            else
+            {
+                if (harnessCount >= peopleStable)
+                    _lastSeenHarnessOk = now;
+
+                bool harnessOk = (now - _lastSeenHarnessOk <= HOLD_PPE);
+                TxtHarnessSummary.Text = harnessOk ? "(착용)" : "(미착용)";
+            }
+
+            var unsafeHits = ucDets.Concat(highDets)
+                .Select(d => d.Cls)
+                .Where(cls => _unsafeInstallCodes.Contains(cls))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x)
+                .ToList();
+
+            // ✅ 미설치물: 한번 잡히면 계속 표시하다가 5초 미탐지면 사라짐
+            if (unsafeHits.Count > 0)
+            {
+                _lastSeenUnsafe = now;
+                _lastUnsafeText = string.Join(", ", unsafeHits);
+            }
+
+            bool unsafeActive = (now - _lastSeenUnsafe <= HOLD_UNSAFE);
+            TxtUcSummary.Text = unsafeActive ? _lastUnsafeText : "-";
+
+            int abnormalCount = 0;
+            if (peopleStable != EXPECTED_PEOPLE) abnormalCount++;
+
+            if (TxtHelmetSummary.Text.Contains("미착용")) abnormalCount++;
+            if (TxtHarnessSummary.Text.Contains("미착용")) abnormalCount++;
+
+            if (TxtUcSummary.Text != "-") abnormalCount++;
+
+            if (abnormalCount == 0)
+            {
+                TxtRiskSummary.Text = "정상";
+                TxtRiskDetail.Text = "(비정상 0건)";
+            }
+            else if (abnormalCount == 1)
+            {
+                TxtRiskSummary.Text = "주의";
+                TxtRiskDetail.Text = $"(비정상 {abnormalCount}건)";
+            }
+            else
+            {
+                TxtRiskSummary.Text = "위험";
+                TxtRiskDetail.Text = $"(비정상 {abnormalCount}건)";
+            }
+
+            if (abnormalCount > 0)
+            {
+                _warnToday++;
+                TxtWarnToday.Text = $"{_warnToday}건";
+
+                string msg = $"{DateTime.Now:HH:mm} 비정상 감지 ({abnormalCount}건)";
+                TxtAlertLog.Text = msg;
+                TxtBottomLog.Text = msg;
+            }
+        }
+
         private Detection? UpdateTracking(int idx, Mat frame, List<Detection> personDets)
         {
             if (frame.Empty()) return null;
@@ -756,13 +907,18 @@ namespace ComeBackHome
 
         private void DrawDetections(List<Detection> dets)
         {
-            double viewW = ImgCctv.ActualWidth;
-            double viewH = ImgCctv.ActualHeight;
-            if (_imgW <= 0 || _imgH <= 0 || viewW <= 0 || viewH <= 0) return;
+            if (_imgW <= 0 || _imgH <= 0) return;
 
-            double scale = Math.Min(viewW / _imgW, viewH / _imgH);
-            double offX = (viewW - _imgW * scale) / 2.0;
-            double offY = (viewH - _imgH * scale) / 2.0;
+            double hostW = ImgCctv.ActualWidth;
+            double hostH = ImgCctv.ActualHeight;
+            if (hostW <= 0 || hostH <= 0) return;
+
+            double scale = Math.Min(hostW / _imgW, hostH / _imgH);
+            double drawnW = _imgW * scale;
+            double drawnH = _imgH * scale;
+
+            double offX = (hostW - drawnW) / 2.0;
+            double offY = (hostH - drawnH) / 2.0;
 
             OverlayCanvas.Children.Clear();
 
@@ -845,24 +1001,27 @@ namespace ComeBackHome
 
         private void BtnAck_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show("Ack 처리(예시).");
+            TxtAlertLog.Text = "(로그 없음)";
+            TxtBottomLog.Text = "(로그 없음)";
         }
 
+        // ✅ 버튼은 없어졌어도 이 함수가 있어도 컴파일 문제 없음(원하면 삭제 가능)
         private async void BtnInfer_Click(object sender, RoutedEventArgs e)
         {
             await RunUcInferForCurrentFrameAsync(force: true);
+            await RunPersonInferForCurrentFrameAsync(force: true);
             await RunPpeInferForCurrentFrameAsync(force: true);
             await RunHighInferForCurrentFrameAsync(force: true);
         }
 
         // =========================
-        // ✅ BENCH: 300 frames -> CSV
+        // ✅ BENCH
         // =========================
         private async void BtnBench_Click(object sender, RoutedEventArgs e)
         {
             if (_frames.Count == 0)
             {
-                MessageBox.Show("먼저 채널을 선택하고 프레임을 로드하세요.");
+                MessageBox.Show("먼저 A/B에서 시퀀스를 선택하고 프레임을 로드하세요.");
                 return;
             }
 
@@ -871,14 +1030,13 @@ namespace ComeBackHome
                 BtnBench.IsEnabled = false;
                 TxtCctvStatus.Text = "Benchmark running...";
 
-                string? seqPath = CmbChannel.SelectedValue as string;
+                string? seqPath = _currentSeqPath;
                 if (string.IsNullOrWhiteSpace(seqPath) || !Directory.Exists(seqPath))
                 {
-                    MessageBox.Show("채널 경로가 올바르지 않습니다.");
+                    MessageBox.Show("채널(시퀀스) 경로가 올바르지 않습니다.");
                     return;
                 }
 
-                // 현재 선택 트래커 타입
                 TrackerType t = TrackerType.CSRT;
                 if (CmbTrackerType.SelectedIndex == 1) t = TrackerType.KCF;
                 else if (CmbTrackerType.SelectedIndex == 2) t = TrackerType.MIL;
@@ -908,15 +1066,8 @@ namespace ComeBackHome
             }
         }
 
-        // CSV 문자열 생성
         private string RunTrackingBenchmark(string seqPath, TrackerType t, int maxFrames)
         {
-            // 전략:
-            // - pred_person 폴더의 YOLO 결과(txt)가 있으면 첫 bbox로 init
-            // - 이후는 tracker.Update만 수행하면서
-            //   성공률 / 평균 ms / fps 계산
-            // - 만약 init할 bbox가 끝까지 없으면 "no_init"로 종료
-
             var frames = Directory.GetFiles(seqPath)
                 .Where(p => p.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
                          || p.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase)
@@ -927,17 +1078,14 @@ namespace ComeBackHome
 
             int total = frames.Count;
 
-            // 측정값
             int initFrame = -1;
             int updateCount = 0;
             int okCount = 0;
             double sumMs = 0;
 
-            // tracker instance (벤치용 독립)
             var tracker = new PersonTracker(t);
             bool trackerActive = false;
 
-            // img size는 첫 프레임 기준으로 잡고, bbox decode에도 사용
             int imgW = 0, imgH = 0;
 
             for (int i = 0; i < total; i++)
@@ -948,12 +1096,10 @@ namespace ComeBackHome
 
                 if (imgW == 0) { imgW = m.Width; imgH = m.Height; }
 
-                // yolo person txt path
                 string predTxt = GetPredTxtPath(seqPath, img, _cfg.PersonPredFolder);
 
                 if (!trackerActive)
                 {
-                    // init은 YOLO person bbox가 있을 때만
                     if (File.Exists(predTxt))
                     {
                         var dets = LoadYoloLabelsFromTxt(predTxt, imgW, imgH, "person");
@@ -965,11 +1111,9 @@ namespace ComeBackHome
                             initFrame = i;
                         }
                     }
-
                     continue;
                 }
 
-                // update timing
                 var sw = Stopwatch.StartNew();
                 Rect2d box;
                 bool ok = tracker.Update(m, out box);
@@ -980,12 +1124,10 @@ namespace ComeBackHome
                 if (ok) okCount++;
             }
 
-            // 결과 정리
             double avgMs = updateCount > 0 ? sumMs / updateCount : 0;
             double fps = avgMs > 0 ? 1000.0 / avgMs : 0;
             double okRate = updateCount > 0 ? (double)okCount / updateCount : 0;
 
-            // CSV: header + summary row
             var sb = new StringBuilder();
             sb.AppendLine("seq,tracker,total_frames,init_frame,updates,ok,ok_rate,avg_update_ms,est_fps,person_pred_folder");
             sb.AppendLine(string.Join(",",
@@ -1001,7 +1143,6 @@ namespace ComeBackHome
                 Csv(_cfg.PersonPredFolder ?? "pred_person")
             ));
 
-            // 부가: init 못 했으면 원인 로그도 한 줄 더
             if (initFrame < 0)
             {
                 sb.AppendLine();
@@ -1013,7 +1154,6 @@ namespace ComeBackHome
 
         private static string Csv(string s)
         {
-            // 간단 CSV escape
             s ??= "";
             if (s.Contains(",") || s.Contains("\"") || s.Contains("\n"))
             {
@@ -1024,14 +1164,14 @@ namespace ComeBackHome
         }
 
         // =========================
-        // INFER (너 기존 로직 유지)
+        // INFER (seqPath만 _currentSeqPath로)
         // =========================
         private async Task RunUcInferForCurrentFrameAsync(bool force = false)
         {
             if (_ucRunning && !force) return;
             if (_frames.Count == 0) return;
 
-            string? seqPath = CmbChannel.SelectedValue as string;
+            string? seqPath = _currentSeqPath;
             if (string.IsNullOrWhiteSpace(seqPath) || !Directory.Exists(seqPath)) return;
 
             string curImg = _frames[_frameIndex];
@@ -1084,7 +1224,7 @@ namespace ComeBackHome
             if (_personRunning && !force) return;
             if (_frames.Count == 0) return;
 
-            string? seqPath = CmbChannel.SelectedValue as string;
+            string? seqPath = _currentSeqPath;
             if (string.IsNullOrWhiteSpace(seqPath) || !Directory.Exists(seqPath)) return;
 
             string curImg = _frames[_frameIndex];
@@ -1137,7 +1277,7 @@ namespace ComeBackHome
             if (_ppeRunning && !force) return;
             if (_frames.Count == 0) return;
 
-            string? seqPath = CmbChannel.SelectedValue as string;
+            string? seqPath = _currentSeqPath;
             if (string.IsNullOrWhiteSpace(seqPath) || !Directory.Exists(seqPath)) return;
 
             string curImg = _frames[_frameIndex];
@@ -1190,7 +1330,7 @@ namespace ComeBackHome
             if (_highRunning && !force) return;
             if (_frames.Count == 0) return;
 
-            string? seqPath = CmbChannel.SelectedValue as string;
+            string? seqPath = _currentSeqPath;
             if (string.IsNullOrWhiteSpace(seqPath) || !Directory.Exists(seqPath)) return;
 
             string curImg = _frames[_frameIndex];
