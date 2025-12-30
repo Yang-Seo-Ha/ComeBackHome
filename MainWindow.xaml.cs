@@ -108,6 +108,28 @@ namespace ComeBackHome
         private int _warnToday = 0;
 
         // =========================
+        // 리포트(CSV)용 세션/로그
+        // =========================
+        private DateTime? _workStartAt = null;   // 작업 시작 시간(모니터링 시작)
+        private DateTime? _workEndAt = null;     // 작업 종료 시간(모니터링 정지)
+
+        private int _maxPeopleStable = 0;        // 작업 중 최대 인원(peopleStable 기준)
+        private int _maxHelmetCount = 0;         // 작업 중 최대 헬멧 탐지 수
+        private int _maxHarnessCount = 0;        // 작업 중 최대 하네스 탐지 수
+
+        private int _totalAbnormalEvents = 0;    // 비정상 이벤트 누적(리포트용)
+
+        // 이벤트 로그: "언제 / 무엇 / 상세" 저장
+        private readonly List<ReportEvent> _events = new List<ReportEvent>();
+
+        private class ReportEvent
+        {
+            public DateTime Time { get; set; }
+            public string Type { get; set; } = "";   // ex) PeopleMismatch, HelmetMissing, HarnessMissing, UnsafeInstall
+            public string Detail { get; set; } = ""; // ex) "people=1 expected=2"
+        }
+
+        // =========================
         // 안정화(hold)용 상태
         // =========================
         private static readonly TimeSpan HOLD_PEOPLE = TimeSpan.FromSeconds(3);
@@ -174,6 +196,22 @@ namespace ComeBackHome
                 "UC-07","UC-08"
             };
 
+        private readonly Dictionary<string, string> _unsafeDisplayName =
+             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["SO-07"] = "SO-07 안전난간 미설치",
+        ["SO-05"] = "SO-05 과상승방지봉 미설치",
+
+        ["UC-09"] = "UC-09 고임목 미설치",
+        ["UC-10"] = "UC-10 과상승방지봉 미설치",
+        ["UC-11"] = "UC-11 렌탈차량 통행로 미확보",
+        ["UC-12"] = "UC-12 전도방지대 미설치",
+
+        ["UC-07"] = "UC-07 적재물 위에 사다리 설치",
+        ["UC-08"] = "UC-08 전도방지대 미설치",
+
+        ["WO-08"] = "WO-08 고소작업대"
+    };
         private readonly Dictionary<string, Brush> _clsBrush =
             new Dictionary<string, Brush>(StringComparer.OrdinalIgnoreCase)
             {
@@ -495,6 +533,11 @@ namespace ComeBackHome
             {
                 _playTimer.Stop();
                 _isPlaying = false;
+
+                // ✅ [여기 추가] 재생 정지 시 '작업 종료 시간' 기록 + 리포트 버튼 활성
+                _workEndAt = DateTime.Now;
+                BtnReport.IsEnabled = true;
+
                 TxtCctvStatus.Text = "Paused";
             }
             else
@@ -503,8 +546,27 @@ namespace ComeBackHome
                 _playTimer.Interval = TimeSpan.FromMilliseconds(1000.0 / fps);
                 _playTimer.Start();
                 _isPlaying = true;
+
+                // ✅ [여기 추가] 재생 시작 시 '작업 시작 시간' 기록 + 리포트 초기화 (처음 1회만)
+                if (_workStartAt == null)
+                {
+                    _workStartAt = DateTime.Now;
+                    _workEndAt = null;
+
+                    _events.Clear();
+                    _totalAbnormalEvents = 0;
+
+                    _maxPeopleStable = 0;
+                    _maxHelmetCount = 0;
+                    _maxHarnessCount = 0;
+
+                    // 진행 중엔 리포트 저장 막기(원하면 안 막아도 됨)
+                    BtnReport.IsEnabled = false;
+                }
+
                 TxtCctvStatus.Text = "Playing...";
             }
+
         }
 
         private void ShowNextFrame()
@@ -587,6 +649,44 @@ namespace ComeBackHome
                 $"UC:{ucDets.Count} PERSON:{personDets.Count} PPE:{ppeDets.Count} HIGH:{highDets.Count} {trkNote}";
         }
 
+        // ✅ 누적 경고 과다 증가 방지용(정상→비정상 진입 시 1회만 카운트)
+        private bool _abnormalActive = false;
+        private DateTime _abnormalSince = DateTime.MinValue;
+        // =========================
+        // ✅ 유형별 경고 쿨다운
+        // =========================
+        private readonly Dictionary<string, TimeSpan> _warnCooldown =
+            new Dictionary<string, TimeSpan>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["PeopleMismatch"] = TimeSpan.FromSeconds(10),
+                ["HelmetMissing"] = TimeSpan.FromSeconds(20),
+                ["HarnessMissing"] = TimeSpan.FromSeconds(20),
+                ["UnsafeInstall"] = TimeSpan.FromSeconds(30),
+            };
+
+        private readonly Dictionary<string, DateTime> _lastWarnAtByType =
+            new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+
+        private bool CanCountWarn(string type, DateTime now)
+        {
+            if (!_warnCooldown.TryGetValue(type, out var cd))
+                cd = TimeSpan.FromSeconds(10); // 기본값
+
+            if (!_lastWarnAtByType.TryGetValue(type, out var last))
+            {
+                _lastWarnAtByType[type] = now;
+                return true;
+            }
+
+            if (now - last >= cd)
+            {
+                _lastWarnAtByType[type] = now;
+                return true;
+            }
+
+            return false;
+        }
+
         private void UpdateRightSummary(List<Detection> personDets, List<Detection> ppeDets, List<Detection> ucDets, List<Detection> highDets)
         {
             var now = DateTime.Now;
@@ -603,21 +703,28 @@ namespace ComeBackHome
 
             int peopleStable = (now - _lastSeenPeople <= HOLD_PEOPLE) ? _lastPeopleCount : 0;
 
-            TxtPeopleSummary.Text = $"{peopleStable} / {EXPECTED_PEOPLE}";
-
+            // helmet/harness count
             int helmetCount = ppeDets.Count(d => d.Cls.Equals("Helmet", StringComparison.OrdinalIgnoreCase));
             int harnessCount = ppeDets.Count(d => d.Cls.Equals("Safety_Harness", StringComparison.OrdinalIgnoreCase));
+
+            // 작업 중 통계 업데이트
+            if (_workStartAt != null && _workEndAt == null)
+            {
+                if (peopleStable > _maxPeopleStable) _maxPeopleStable = peopleStable;
+                if (helmetCount > _maxHelmetCount) _maxHelmetCount = helmetCount;
+                if (harnessCount > _maxHarnessCount) _maxHarnessCount = harnessCount;
+            }
+
+            TxtPeopleSummary.Text = $"{peopleStable} / {EXPECTED_PEOPLE}";
 
             // 3) Helmet 판정
             if (peopleStable == 0)
             {
-                TxtHelmetSummary.Text = "-"; // 대상 없음
+                TxtHelmetSummary.Text = "-";
             }
             else
             {
-                if (helmetCount >= peopleStable)
-                    _lastSeenHelmetOk = now;
-
+                if (helmetCount >= peopleStable) _lastSeenHelmetOk = now;
                 bool helmetOk = (now - _lastSeenHelmetOk <= HOLD_PPE);
                 TxtHelmetSummary.Text = helmetOk ? "(착용)" : "(미착용)";
             }
@@ -625,17 +732,16 @@ namespace ComeBackHome
             // 4) Harness 판정
             if (peopleStable == 0)
             {
-                TxtHarnessSummary.Text = "-"; // 대상 없음
+                TxtHarnessSummary.Text = "-";
             }
             else
             {
-                if (harnessCount >= peopleStable)
-                    _lastSeenHarnessOk = now;
-
+                if (harnessCount >= peopleStable) _lastSeenHarnessOk = now;
                 bool harnessOk = (now - _lastSeenHarnessOk <= HOLD_PPE);
                 TxtHarnessSummary.Text = harnessOk ? "(착용)" : "(미착용)";
             }
 
+            // 5) Unsafe install
             var unsafeHits = ucDets.Concat(highDets)
                 .Select(d => d.Cls)
                 .Where(cls => _unsafeInstallCodes.Contains(cls))
@@ -643,24 +749,33 @@ namespace ComeBackHome
                 .OrderBy(x => x)
                 .ToList();
 
-            // ✅ 미설치물: 한번 잡히면 계속 표시하다가 5초 미탐지면 사라짐
             if (unsafeHits.Count > 0)
             {
                 _lastSeenUnsafe = now;
-                _lastUnsafeText = string.Join(", ", unsafeHits);
+                _lastUnsafeText = string.Join(", ",
+                    unsafeHits.Select(code =>
+                        _unsafeDisplayName.TryGetValue(code, out var name) ? name : code)
+                );
             }
 
             bool unsafeActive = (now - _lastSeenUnsafe <= HOLD_UNSAFE);
             TxtUcSummary.Text = unsafeActive ? _lastUnsafeText : "-";
 
+            // =========================
+            // ✅ 비정상 유형 계산
+            // =========================
+            bool peopleAbn = (peopleStable < EXPECTED_PEOPLE); // 2명 미만만 비정상, 2명 이상은 정상
+            bool helmetAbn = (peopleStable > 0 && TxtHelmetSummary.Text.Contains("미착용"));
+            bool harnessAbn = (peopleStable > 0 && TxtHarnessSummary.Text.Contains("미착용"));
+            bool unsafeAbn = (TxtUcSummary.Text != "-");
+
             int abnormalCount = 0;
-            if (peopleStable != EXPECTED_PEOPLE) abnormalCount++;
+            if (peopleAbn) abnormalCount++;
+            if (helmetAbn) abnormalCount++;
+            if (harnessAbn) abnormalCount++;
+            if (unsafeAbn) abnormalCount++;
 
-            if (TxtHelmetSummary.Text.Contains("미착용")) abnormalCount++;
-            if (TxtHarnessSummary.Text.Contains("미착용")) abnormalCount++;
-
-            if (TxtUcSummary.Text != "-") abnormalCount++;
-
+            // 위험도 UI
             if (abnormalCount == 0)
             {
                 TxtRiskSummary.Text = "정상";
@@ -677,15 +792,68 @@ namespace ComeBackHome
                 TxtRiskDetail.Text = $"(비정상 {abnormalCount}건)";
             }
 
-            if (abnormalCount > 0)
+            // =========================
+            // ✅ (핵심) 누적 경고는 "유형별 쿨다운" 통과 시만 +1
+            // =========================
+            int added = 0;
+
+            if (peopleAbn && CanCountWarn("PeopleMismatch", now)) added++;
+            if (helmetAbn && CanCountWarn("HelmetMissing", now)) added++;
+            if (harnessAbn && CanCountWarn("HarnessMissing", now)) added++;
+            if (unsafeAbn && CanCountWarn("UnsafeInstall", now)) added++;
+
+            if (added > 0)
             {
-                _warnToday++;
+                _warnToday += added;
                 TxtWarnToday.Text = $"{_warnToday}건";
 
-                string msg = $"{DateTime.Now:HH:mm} 비정상 감지 ({abnormalCount}건)";
+                string msg = $"{now:HH:mm} 비정상 감지 (+{added})";
                 TxtAlertLog.Text = msg;
                 TxtBottomLog.Text = msg;
             }
+
+            // =========================
+            // ✅ 이벤트 로그(리포트용)는 기존처럼 기록 (1초 디바운스 유지)
+            // =========================
+            if (abnormalCount > 0 && _workStartAt != null && _workEndAt == null)
+            {
+                if (peopleAbn)
+                    AddEventOncePerSecond(now, "PeopleMismatch", $"peopleStable={peopleStable}, minExpected={EXPECTED_PEOPLE}");
+
+
+                if (helmetAbn)
+                    AddEventOncePerSecond(now, "HelmetMissing", $"peopleStable={peopleStable}, helmetCount={helmetCount}");
+
+                if (harnessAbn)
+                    AddEventOncePerSecond(now, "HarnessMissing", $"peopleStable={peopleStable}, harnessCount={harnessCount}");
+
+                if (unsafeAbn)
+                    AddEventOncePerSecond(now, "UnsafeInstall", TxtUcSummary.Text);
+            }
+        }
+
+
+
+        private DateTime _lastEventWrittenAt = DateTime.MinValue;
+        private string _lastEventKey = "";
+
+        private void AddEventOncePerSecond(DateTime now, string type, string detail)
+        {
+            // 같은 type/detail이 너무 자주 쌓이지 않게 1초 디바운스
+            string key = $"{type}|{detail}";
+            if (key == _lastEventKey && (now - _lastEventWrittenAt).TotalSeconds < 1.0)
+                return;
+
+            _events.Add(new ReportEvent
+            {
+                Time = now,
+                Type = type,
+                Detail = detail
+            });
+
+            _totalAbnormalEvents++;
+            _lastEventKey = key;
+            _lastEventWrittenAt = now;
         }
 
         private Detection? UpdateTracking(int idx, Mat frame, List<Detection> personDets)
@@ -999,6 +1167,87 @@ namespace ComeBackHome
             }
         }
 
+        private string BuildReportCsv()
+        {
+            var sb = new StringBuilder();
+
+            // ===== Summary =====
+            sb.AppendLine("SECTION,KEY,VALUE");
+            sb.AppendLine($"SUMMARY,WorkStart,{_workStartAt:yyyy-MM-dd HH:mm:ss}");
+            sb.AppendLine($"SUMMARY,WorkEnd,{_workEndAt:yyyy-MM-dd HH:mm:ss}");
+
+            // 현재 모니터링 문구(구역)
+            sb.AppendLine($"SUMMARY,WorkZone,{EscapeCsv(TxtSelectedWork.Text)}");
+
+            // 기준/홀드시간 같이 남기면 “왜 이렇게 판정했는지” 설명 가능
+            sb.AppendLine($"SUMMARY,ExpectedPeople,{EXPECTED_PEOPLE}");
+            sb.AppendLine($"SUMMARY,HoldPeopleSec,{HOLD_PEOPLE.TotalSeconds}");
+            sb.AppendLine($"SUMMARY,HoldPpeSec,{HOLD_PPE.TotalSeconds}");
+            sb.AppendLine($"SUMMARY,HoldUnsafeSec,{HOLD_UNSAFE.TotalSeconds}");
+
+            // 통계
+            sb.AppendLine($"SUMMARY,MaxPeopleStable,{_maxPeopleStable}");
+            sb.AppendLine($"SUMMARY,MaxHelmetDetected,{_maxHelmetCount}");
+            sb.AppendLine($"SUMMARY,MaxHarnessDetected,{_maxHarnessCount}");
+            sb.AppendLine($"SUMMARY,TotalAbnormalEvents,{_totalAbnormalEvents}");
+
+            sb.AppendLine(); // 빈 줄
+
+            // ===== Events =====
+            sb.AppendLine("EVENT_TIME,TYPE,DETAIL");
+            foreach (var ev in _events)
+            {
+                sb.AppendLine($"{ev.Time:yyyy-MM-dd HH:mm:ss},{EscapeCsv(ev.Type)},{EscapeCsv(ev.Detail)}");
+            }
+
+            return sb.ToString();
+        }
+
+        private static string EscapeCsv(string? s)
+        {
+            s ??= "";
+            if (s.Contains(",") || s.Contains("\"") || s.Contains("\n"))
+            {
+                s = s.Replace("\"", "\"\"");
+                return $"\"{s}\"";
+            }
+            return s;
+        }
+
+
+        private void BtnReport_Click(object sender, RoutedEventArgs e)
+        {
+            if (_workStartAt == null)
+            {
+                MessageBox.Show("작업(모니터링)을 시작한 기록이 없습니다.");
+                return;
+            }
+
+            // 종료시간이 없으면 지금을 종료시간으로 임시 지정(원하면 막아도 됨)
+            if (_workEndAt == null) _workEndAt = DateTime.Now;
+
+            var dlg = new SaveFileDialog
+            {
+                Title = "안전관리 리포트(CSV) 저장",
+                Filter = "CSV (*.csv)|*.csv",
+                FileName = $"safety_report_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
+            };
+
+            if (dlg.ShowDialog() != true) return;
+
+            try
+            {
+                string csv = BuildReportCsv();
+                File.WriteAllText(dlg.FileName, csv, Encoding.UTF8);
+                MessageBox.Show("리포트 저장 완료!");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"리포트 저장 실패: {ex.Message}");
+            }
+        }
+
+
         private void BtnAck_Click(object sender, RoutedEventArgs e)
         {
             TxtAlertLog.Text = "(로그 없음)";
@@ -1014,154 +1263,6 @@ namespace ComeBackHome
             await RunHighInferForCurrentFrameAsync(force: true);
         }
 
-        // =========================
-        // ✅ BENCH
-        // =========================
-        private async void BtnBench_Click(object sender, RoutedEventArgs e)
-        {
-            if (_frames.Count == 0)
-            {
-                MessageBox.Show("먼저 A/B에서 시퀀스를 선택하고 프레임을 로드하세요.");
-                return;
-            }
-
-            try
-            {
-                BtnBench.IsEnabled = false;
-                TxtCctvStatus.Text = "Benchmark running...";
-
-                string? seqPath = _currentSeqPath;
-                if (string.IsNullOrWhiteSpace(seqPath) || !Directory.Exists(seqPath))
-                {
-                    MessageBox.Show("채널(시퀀스) 경로가 올바르지 않습니다.");
-                    return;
-                }
-
-                TrackerType t = TrackerType.CSRT;
-                if (CmbTrackerType.SelectedIndex == 1) t = TrackerType.KCF;
-                else if (CmbTrackerType.SelectedIndex == 2) t = TrackerType.MIL;
-
-                int N = 300;
-                var result = await Task.Run(() => RunTrackingBenchmark(seqPath, t, N));
-
-                string outDir = Path.Combine(_projectRoot, "benchmarks");
-                Directory.CreateDirectory(outDir);
-
-                string seqName = Path.GetFileName(seqPath);
-                string csvPath = Path.Combine(outDir,
-                    $"bench_{seqName}_{t}_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
-
-                File.WriteAllText(csvPath, result, Encoding.UTF8);
-
-                TxtCctvStatus.Text = $"✅ Bench done: {t} / saved:\n{csvPath}";
-                MessageBox.Show($"벤치 완료!\n\nTracker: {t}\nSaved:\n{csvPath}");
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"벤치 실패: {ex.Message}");
-            }
-            finally
-            {
-                BtnBench.IsEnabled = true;
-            }
-        }
-
-        private string RunTrackingBenchmark(string seqPath, TrackerType t, int maxFrames)
-        {
-            var frames = Directory.GetFiles(seqPath)
-                .Where(p => p.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
-                         || p.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase)
-                         || p.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
-                .OrderBy(p => p)
-                .Take(Math.Max(1, maxFrames))
-                .ToList();
-
-            int total = frames.Count;
-
-            int initFrame = -1;
-            int updateCount = 0;
-            int okCount = 0;
-            double sumMs = 0;
-
-            var tracker = new PersonTracker(t);
-            bool trackerActive = false;
-
-            int imgW = 0, imgH = 0;
-
-            for (int i = 0; i < total; i++)
-            {
-                string img = frames[i];
-                using Mat m = SafeImRead(img);
-                if (m.Empty()) continue;
-
-                if (imgW == 0) { imgW = m.Width; imgH = m.Height; }
-
-                string predTxt = GetPredTxtPath(seqPath, img, _cfg.PersonPredFolder);
-
-                if (!trackerActive)
-                {
-                    if (File.Exists(predTxt))
-                    {
-                        var dets = LoadYoloLabelsFromTxt(predTxt, imgW, imgH, "person");
-                        if (dets.Count > 0)
-                        {
-                            var best = PickBestPerson(dets);
-                            tracker.Init(m, DetToRect2d(best));
-                            trackerActive = tracker.IsActive;
-                            initFrame = i;
-                        }
-                    }
-                    continue;
-                }
-
-                var sw = Stopwatch.StartNew();
-                Rect2d box;
-                bool ok = tracker.Update(m, out box);
-                sw.Stop();
-
-                updateCount++;
-                sumMs += sw.Elapsed.TotalMilliseconds;
-                if (ok) okCount++;
-            }
-
-            double avgMs = updateCount > 0 ? sumMs / updateCount : 0;
-            double fps = avgMs > 0 ? 1000.0 / avgMs : 0;
-            double okRate = updateCount > 0 ? (double)okCount / updateCount : 0;
-
-            var sb = new StringBuilder();
-            sb.AppendLine("seq,tracker,total_frames,init_frame,updates,ok,ok_rate,avg_update_ms,est_fps,person_pred_folder");
-            sb.AppendLine(string.Join(",",
-                Csv(seqPath),
-                Csv(t.ToString()),
-                total.ToString(CultureInfo.InvariantCulture),
-                initFrame.ToString(CultureInfo.InvariantCulture),
-                updateCount.ToString(CultureInfo.InvariantCulture),
-                okCount.ToString(CultureInfo.InvariantCulture),
-                okRate.ToString("0.000", CultureInfo.InvariantCulture),
-                avgMs.ToString("0.000", CultureInfo.InvariantCulture),
-                fps.ToString("0.0", CultureInfo.InvariantCulture),
-                Csv(_cfg.PersonPredFolder ?? "pred_person")
-            ));
-
-            if (initFrame < 0)
-            {
-                sb.AppendLine();
-                sb.AppendLine("note,no_init_bbox_found_in_pred_person_txt");
-            }
-
-            return sb.ToString();
-        }
-
-        private static string Csv(string s)
-        {
-            s ??= "";
-            if (s.Contains(",") || s.Contains("\"") || s.Contains("\n"))
-            {
-                s = s.Replace("\"", "\"\"");
-                return $"\"{s}\"";
-            }
-            return s;
-        }
 
         // =========================
         // INFER (seqPath만 _currentSeqPath로)

@@ -379,7 +379,7 @@
                         <WrapPanel Grid.Row="1" HorizontalAlignment="Right">
                             <Button Style="{StaticResource MiniBtn}" x:Name="BtnPlayStop" Content="⏯ 재생/정지" Click="BtnPlayStop_Click"/>
                             <Button Style="{StaticResource MiniBtn}" x:Name="BtnSnapshot" Content="📌 스냅샷 저장" Click="BtnSnapshot_Click"/>
-                            <Button Style="{StaticResource MiniBtn}" x:Name="BtnBench" Content="🧪 벤치(300f) → CSV" Click="BtnBench_Click"/>
+                            
                         </WrapPanel>
                     </Grid>
                 </Grid>
@@ -474,9 +474,11 @@
                                        Margin="0,0,0,6"/>
                             <Button x:Name="BtnReport"
                                     Content="📄 Excel 리포트 저장"
-                                    Margin="0"
+                                     Margin="0"
                                     Padding="10,8"
-                                    IsEnabled="False"/>
+                                    IsEnabled="False"
+                                    Click="BtnReport_Click"/>
+
                             <TextBlock Text="※ 비정상 내역을 작업 종료 시 Excel로 저장"
                                        Foreground="#6F86C8"
                                        Margin="0,6,0,0"
