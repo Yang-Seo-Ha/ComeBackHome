@@ -106,7 +106,6 @@
 
     <DockPanel LastChildFill="True">
 
-        <!-- Header -->
         <Border DockPanel.Dock="Top"
                 Background="#0A1330"
                 BorderBrush="#22345E"
@@ -128,29 +127,43 @@
                                Foreground="#9DB7FF"
                                VerticalAlignment="Bottom"/>
                 </StackPanel>
-
                 <StackPanel Grid.Column="1"
-                            Orientation="Horizontal"
-                            VerticalAlignment="Center"
-                            HorizontalAlignment="Right">
-                    <Border Style="{StaticResource BadgeStyle}" Margin="0,0,10,0">
+            Orientation="Horizontal"
+            VerticalAlignment="Center"
+            HorizontalAlignment="Right">
+
+                    <Button x:Name="BtnOpenCvMode" 
+            Content="🔍 OpenCV 분석" 
+            Click="BtnOpenCvMode_Click"
+            Background="#22345E"
+            BorderBrush="#4A5A8E"
+            Width="120"
+            Height="34" 
+            FontSize="12"
+            Margin="0,0,12,0"
+            Padding="8,6"
+            VerticalAlignment="Center"
+            VerticalContentAlignment="Center" 
+            HorizontalContentAlignment="Center"/>
+
+                    <Border Style="{StaticResource BadgeStyle}" Margin="0,0,10,0" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
                             <Ellipse Width="8" Height="8"
-                                     Fill="#2EE59D"
-                                     VerticalAlignment="Center"
-                                     Margin="0,0,8,0"/>
-                            <TextBlock Text="LIVE" FontWeight="SemiBold"/>
+                     Fill="#2EE59D"
+                     VerticalAlignment="Center"
+                     Margin="0,0,8,0"/>
+                            <TextBlock Text="LIVE" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Border>
+
                     <TextBlock x:Name="TxtHeaderTime"
-                               Text="-"
-                               Foreground="#9DB7FF"
-                               VerticalAlignment="Center"/>
+               Text="-"
+               Foreground="#9DB7FF"
+               VerticalAlignment="Center"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Bottom Status Bar -->
         <Border DockPanel.Dock="Bottom" Style="{StaticResource StatusBarStyle}">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -182,7 +195,6 @@
             </Grid>
         </Border>
 
-        <!-- Body -->
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="330"/>
@@ -190,11 +202,9 @@
                 <ColumnDefinition Width="380"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Left -->
             <GroupBox Grid.Column="0" Header="실시간 작업현장 확인하기">
                 <StackPanel>
 
-                    <!-- 구역 선택 -->
                     <Border CornerRadius="12"
                             Background="#0C1530"
                             BorderBrush="#243A66"
@@ -247,7 +257,6 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 현재 선택 -->
                     <Border CornerRadius="12"
                             Background="#0C1530"
                             BorderBrush="#243A66"
@@ -269,7 +278,6 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 오늘 누적 경고 -->
                     <Border CornerRadius="12"
                             Background="#081028"
                             BorderBrush="#243A66"
@@ -301,7 +309,6 @@
                 </StackPanel>
             </GroupBox>
 
-            <!-- Center -->
             <GroupBox Grid.Column="1" Header="CCTV 모니터링">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -337,14 +344,12 @@
                         </Grid>
                     </Border>
 
-                    <!-- Bottom controls -->
                     <Grid Grid.Row="1" Margin="0,12,0,0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <!-- ✅ 채널 UI 제거: 트래커만 유지 -->
                         <Border Grid.Row="0"
                                 CornerRadius="12"
                                 Background="#081028"
@@ -371,7 +376,6 @@
                             </WrapPanel>
                         </Border>
 
-                        <!-- ✅ 추론 실행 버튼 제거(코드는 유지) -->
                         <WrapPanel Grid.Row="1" HorizontalAlignment="Right">
                             <Button Style="{StaticResource MiniBtn}" x:Name="BtnPlayStop" Content="⏯ 재생/정지" Click="BtnPlayStop_Click"/>
                             <Button Style="{StaticResource MiniBtn}" x:Name="BtnSnapshot" Content="📌 스냅샷 저장" Click="BtnSnapshot_Click"/>
@@ -381,7 +385,6 @@
                 </Grid>
             </GroupBox>
 
-            <!-- Right -->
             <GroupBox Grid.Column="2" Header="안전수칙 자동 점검">
                 <StackPanel>
 

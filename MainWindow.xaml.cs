@@ -1441,5 +1441,22 @@ namespace ComeBackHome
             catch { }
             return Directory.GetCurrentDirectory();
         }
+
+        // MainWindow.xaml.cs 파일 내부
+
+        private void BtnOpenCvMode_Click(object sender, RoutedEventArgs e)
+        {
+            // 1. 새 창 생성
+            OpenCvWindow cvWin = new OpenCvWindow();
+
+            // 2. 창 위치 및 부모 설정
+            cvWin.Owner = this;
+            cvWin.WindowStartupLocation = WindowStartupLocation.Manual;
+            cvWin.Left = this.Left + 50;
+            cvWin.Top = this.Top + 50;
+
+            // 3. 창 띄우기
+            cvWin.Show();
+        }
     }
 }

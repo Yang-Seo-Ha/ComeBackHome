@@ -1,0 +1,226 @@
+﻿<Window x:Class="ComeBackHome.OpenCvWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="OpenCV Analysis Mode"
+        Width="1280" Height="760"
+        MinWidth="1200" MinHeight="720"
+        WindowStartupLocation="Manual"
+        Background="#0B1020">
+
+    <Window.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#D6E4FF"/>
+        </Style>
+
+        <Style TargetType="Button">
+            <Setter Property="Foreground" Value="#E8F1FF"/>
+            <Setter Property="Background" Value="#16243E"/>
+            <Setter Property="BorderBrush" Value="#2B3E6B"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="Margin" Value="0,0,10,10"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="10">
+                            <ContentPresenter Margin="{TemplateBinding Padding}" 
+                                              HorizontalAlignment="Center" 
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="GroupBox">
+            <Setter Property="Foreground" Value="#D6E4FF"/>
+            <Setter Property="BorderBrush" Value="#2B3E6B"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Margin" Value="10"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GroupBox">
+                        <Border CornerRadius="14" Background="#0F1A33" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <Border Background="#13224A" CornerRadius="14,14,0,0" Padding="12,10">
+                                    <TextBlock Text="{TemplateBinding Header}" FontSize="14" FontWeight="SemiBold"/>
+                                </Border>
+                                <ContentPresenter Grid.Row="1" Margin="10"/>
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="BadgeStyle" TargetType="Border">
+            <Setter Property="CornerRadius" Value="999"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Background" Value="#163A2A"/>
+            <Setter Property="BorderBrush" Value="#2EE59D"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <Style x:Key="CheckRowStyle" TargetType="Border">
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Background" Value="#0C1530"/>
+            <Setter Property="BorderBrush" Value="#243A66"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+
+        <Style x:Key="MiniBtn" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel LastChildFill="True">
+        <Border DockPanel.Dock="Top" Background="#0A1330" BorderBrush="#22345E" BorderThickness="0,0,0,1" Height="72">
+            <Grid Margin="18,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="ComeBackHome" FontSize="22" FontWeight="Bold" Margin="0,0,12,0"/>
+                    <TextBlock Text="| OpenCV 분석 모드" FontSize="14" Foreground="#FFB3B3" VerticalAlignment="Bottom"/>
+                </StackPanel>
+                <Border Style="{StaticResource BadgeStyle}" Grid.Column="1" VerticalAlignment="Center" Background="#3A1616" BorderBrush="#FF5E5E">
+                    <TextBlock Text="OPENCV ENGINE" FontWeight="Bold" Foreground="#FFD6D6"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <Border DockPanel.Dock="Bottom" Background="#0A1330" BorderBrush="#22345E" BorderThickness="1,1,1,0" Padding="14,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="🛈 분석 상태:" Foreground="#FFB3B3" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <TextBlock x:Name="TxtBottomLog" Grid.Column="1" Text="OpenCV 분석 엔진 대기 중" Foreground="#D6E4FF" VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="330"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="380"/>
+            </Grid.ColumnDefinitions>
+
+            <GroupBox Grid.Column="0" Header="실시간 작업현장 확인하기">
+                <StackPanel>
+                    <Border Style="{StaticResource CheckRowStyle}">
+                        <StackPanel>
+                            <TextBlock Text="현장 작업 구역" Foreground="#9DB7FF" Margin="0,0,0,5"/>
+                            <Grid Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="A구역 · 고소작업대" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <Button x:Name="BtnSelectA" Grid.Column="1" Content="선택" Width="84" Height="32" Padding="5" Margin="0" Click="BtnStart_Click"/>
+                            </Grid>
+                            <Grid Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="B구역 · 사다리 작업" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <Button x:Name="BtnSelectB" Grid.Column="1" Content="선택" Width="84" Height="32" Padding="5" Margin="0" Click="BtnStart_Click"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CheckRowStyle}">
+                        <StackPanel>
+                            <TextBlock Text="현재 모니터링:" Foreground="#9DB7FF"/>
+                            <TextBlock x:Name="TxtSelectedWork" Text="-" FontSize="16" FontWeight="Bold" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CheckRowStyle}">
+                        <StackPanel>
+                            <TextBlock Text="오늘 누적 위험 건수" Foreground="#FF9D9D"/>
+                            <TextBlock x:Name="TxtWarnToday" Text="0건" FontSize="24" FontWeight="Bold" Foreground="#FF5E5E" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </GroupBox>
+
+            <GroupBox Grid.Column="1" Header="CCTV 모니터링">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Border CornerRadius="16" Background="Black" BorderBrush="#22345E" BorderThickness="1">
+                        <Grid x:Name="VideoHost">
+                            <Image x:Name="ImgCvDisplay" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+                        </Grid>
+                    </Border>
+                    <WrapPanel Grid.Row="1" HorizontalAlignment="Right" Margin="0,15,0,0">
+                        <Button Style="{StaticResource MiniBtn}" x:Name="BtnPlayStop" Content="⏸ 정지" Click="BtnPlayStop_Click"/>
+                        <Button Style="{StaticResource MiniBtn}" x:Name="BtnSnapshot" Content="📌 스냅샷 저장" Margin="0"/>
+                    </WrapPanel>
+                </Grid>
+            </GroupBox>
+
+            <GroupBox Grid.Column="2" Header="안전수칙 자동 점검">
+                <StackPanel>
+                    <Border Style="{StaticResource CheckRowStyle}">
+                        <StackPanel>
+                            <TextBlock Text="탐지 요약" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="현재 인원 수:" Foreground="#9DB7FF"/>
+                                <TextBlock x:Name="TxtPersonCount" Text="0명" HorizontalAlignment="Right" FontWeight="Bold"/>
+                            </Grid>
+                            <Grid>
+                                <TextBlock Text="안전모 감지:" Foreground="#9DB7FF"/>
+                                <TextBlock x:Name="TxtHelmetCount" Text="0개" HorizontalAlignment="Right" FontWeight="Bold"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CheckRowStyle}">
+                        <StackPanel>
+                            <TextBlock Text="위험도" FontSize="14" FontWeight="Bold" Margin="0,0,0,10"/>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="안전 (착용중):" Foreground="#2EE59D"/>
+                                <TextBlock x:Name="TxtSafeCount" Text="0" HorizontalAlignment="Right" Foreground="#2EE59D" FontWeight="Bold" FontSize="18"/>
+                            </Grid>
+                            <Grid>
+                                <TextBlock Text="위험 (미착용):" Foreground="#FF5E5E"/>
+                                <TextBlock x:Name="TxtWarnCount" Text="0" HorizontalAlignment="Right" Foreground="#FF5E5E" FontWeight="Bold" FontSize="18"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource CheckRowStyle}">
+                        <StackPanel>
+                            <TextBlock Text="최근 알림" FontSize="14" FontWeight="Bold" Margin="0,0,0,6"/>
+                            <TextBlock x:Name="TxtAlertLog" Text="(로그 없음)" Foreground="#9DB7FF" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </GroupBox>
+        </Grid>
+    </DockPanel>
+</Window>
